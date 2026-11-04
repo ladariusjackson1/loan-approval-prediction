@@ -1,0 +1,1092 @@
+{
+  "project": "Loan approval prediction",
+  "author": "Ladarius Jackson",
+  "dataset": {
+    "name": "Statlog (German Credit Data)",
+    "openml_name": "credit-g",
+    "openml_id": 31,
+    "openml_url": "https://www.openml.org/d/31",
+    "uci_url": "https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data",
+    "doi": "https://doi.org/10.24432/C5NC77",
+    "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+    "license_notes": "The UCI Machine Learning Repository distributes Statlog (German Credit Data) under CC BY 4.0. OpenML redistributes the same table as data id 31 (credit-g) and records its licence field as 'Public'. This project follows the UCI CC BY 4.0 terms.",
+    "citation": "Hofmann, H. (1994). Statlog (German Credit Data) [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5NC77.",
+    "fetched_with": "sklearn.datasets.fetch_openml(data_id=31, as_frame=True)"
+  },
+  "positive_class": "good credit, coded as 1, decision = approve",
+  "positive_rate": 0.7,
+  "policy": {
+    "excluded_features": [
+      "personal_status",
+      "foreign_worker"
+    ],
+    "reason": "personal_status mixes sex and marital status, and foreign_worker is a sensitive attribute. Both are withheld from the deployed score and kept for the fairness audit. Age stays in the model because it is a standard credit-risk field, and it is still audited by age band.",
+    "fp_cost": 5.0,
+    "fn_cost": 1.0,
+    "cost_source": "UCI Statlog German Credit cost matrix: classifying a bad credit as good costs 5, classifying a good credit as bad costs 1.",
+    "review_band": 0.05
+  },
+  "split": {
+    "test_size": 0.2,
+    "seed": 42,
+    "n_train": 800,
+    "n_test": 200,
+    "cv_folds": 5,
+    "search_iterations_requested": 16,
+    "scoring": "roc_auc"
+  },
+  "selection_rule": "Highest mean stratified cross-validated ROC-AUC on the training split. Ties break toward the smaller fold standard deviation, then toward the simpler model (logistic regression, then random forest, then gradient boosting). The holdout set is not used to choose the model or the threshold.",
+  "comparison": [
+    {
+      "model": "logistic_regression",
+      "display_name": "Logistic regression",
+      "stage": "default",
+      "cv_roc_auc_mean": 0.7831473214285715,
+      "cv_roc_auc_std": 0.0790635280828289,
+      "holdout_roc_auc": null,
+      "holdout_f1": null,
+      "holdout_cost_per_applicant": null,
+      "threshold": null,
+      "best_params": null,
+      "search_seconds": null,
+      "n_iter": null
+    },
+    {
+      "model": "logistic_regression",
+      "display_name": "Logistic regression",
+      "stage": "tuned",
+      "cv_roc_auc_mean": 0.7885788690476191,
+      "cv_roc_auc_std": 0.07912490349568313,
+      "holdout_roc_auc": 0.7608333333333333,
+      "holdout_f1": 0.6451612903225806,
+      "holdout_cost_per_applicant": 0.525,
+      "threshold": 0.8,
+      "best_params": {
+        "clf__class_weight": null,
+        "clf__C": 0.1
+      },
+      "search_seconds": 0.3318661789999169,
+      "n_iter": 12
+    },
+    {
+      "model": "random_forest",
+      "display_name": "Random forest",
+      "stage": "default",
+      "cv_roc_auc_mean": 0.7899925595238095,
+      "cv_roc_auc_std": 0.07615816134947108,
+      "holdout_roc_auc": null,
+      "holdout_f1": null,
+      "holdout_cost_per_applicant": null,
+      "threshold": null,
+      "best_params": null,
+      "search_seconds": null,
+      "n_iter": null
+    },
+    {
+      "model": "random_forest",
+      "display_name": "Random forest",
+      "stage": "tuned",
+      "cv_roc_auc_mean": 0.795014880952381,
+      "cv_roc_auc_std": 0.07015858260653407,
+      "holdout_roc_auc": 0.7819047619047619,
+      "holdout_f1": 0.6320754716981132,
+      "holdout_cost_per_applicant": 0.49,
+      "threshold": 0.69,
+      "best_params": {
+        "clf__n_estimators": 400,
+        "clf__min_samples_leaf": 1,
+        "clf__max_features": "sqrt",
+        "clf__max_depth": 16,
+        "clf__class_weight": "balanced"
+      },
+      "search_seconds": 7.47321154999986,
+      "n_iter": 16
+    },
+    {
+      "model": "gradient_boosting",
+      "display_name": "Gradient boosting",
+      "stage": "default",
+      "cv_roc_auc_mean": 0.7779761904761905,
+      "cv_roc_auc_std": 0.061404161077600064,
+      "holdout_roc_auc": null,
+      "holdout_f1": null,
+      "holdout_cost_per_applicant": null,
+      "threshold": null,
+      "best_params": null,
+      "search_seconds": null,
+      "n_iter": null
+    },
+    {
+      "model": "gradient_boosting",
+      "display_name": "Gradient boosting",
+      "stage": "tuned",
+      "cv_roc_auc_mean": 0.7947916666666668,
+      "cv_roc_auc_std": 0.0692122277790239,
+      "holdout_roc_auc": 0.7766666666666666,
+      "holdout_f1": 0.6960352422907489,
+      "holdout_cost_per_applicant": 0.505,
+      "threshold": 0.77,
+      "best_params": {
+        "clf__subsample": 0.8,
+        "clf__n_estimators": 200,
+        "clf__min_samples_leaf": 5,
+        "clf__max_depth": 2,
+        "clf__learning_rate": 0.05
+      },
+      "search_seconds": 3.2259845969999787,
+      "n_iter": 16
+    }
+  ],
+  "winner": {
+    "model": "random_forest",
+    "display_name": "Random forest"
+  },
+  "holdout": {
+    "roc_auc": 0.7819047619047619,
+    "average_precision": 0.8964396706107396,
+    "brier": 0.17667910984369845,
+    "f1": 0.6320754716981132,
+    "precision": 0.9305555555555556,
+    "recall": 0.4785714285714286,
+    "specificity": 0.9166666666666666,
+    "bad_credit_capture": 0.9166666666666666,
+    "approval_rate": 0.36,
+    "threshold": 0.69,
+    "confusion_matrix": [
+      [
+        55,
+        5
+      ],
+      [
+        73,
+        67
+      ]
+    ],
+    "tn": 55,
+    "fp": 5,
+    "fn": 73,
+    "tp": 67,
+    "cost_total": 98.0,
+    "cost_per_applicant": 0.49,
+    "n": 200
+  },
+  "oof_baselines": {
+    "approve_all": 1.5,
+    "decline_all": 0.7
+  },
+  "holdout_baselines": {
+    "approve_all": 1.5,
+    "decline_all": 0.7
+  },
+  "threshold_curve": {
+    "threshold": [
+      0.05,
+      0.06,
+      0.07,
+      0.08,
+      0.09,
+      0.1,
+      0.11,
+      0.12,
+      0.13,
+      0.14,
+      0.15,
+      0.16,
+      0.17,
+      0.18,
+      0.19,
+      0.2,
+      0.21,
+      0.22,
+      0.23,
+      0.24,
+      0.25,
+      0.26,
+      0.27,
+      0.28,
+      0.29,
+      0.3,
+      0.31,
+      0.32,
+      0.33,
+      0.34,
+      0.35,
+      0.36,
+      0.37,
+      0.38,
+      0.39,
+      0.4,
+      0.41,
+      0.42,
+      0.43,
+      0.44,
+      0.45,
+      0.46,
+      0.47,
+      0.48,
+      0.49,
+      0.5,
+      0.51,
+      0.52,
+      0.53,
+      0.54,
+      0.55,
+      0.56,
+      0.57,
+      0.58,
+      0.59,
+      0.6,
+      0.61,
+      0.62,
+      0.63,
+      0.64,
+      0.65,
+      0.66,
+      0.67,
+      0.68,
+      0.69,
+      0.7,
+      0.71,
+      0.72,
+      0.73,
+      0.74,
+      0.75,
+      0.76,
+      0.77,
+      0.78,
+      0.79,
+      0.8,
+      0.81,
+      0.82,
+      0.83,
+      0.84,
+      0.85,
+      0.86,
+      0.87,
+      0.88,
+      0.89,
+      0.9,
+      0.91,
+      0.92,
+      0.93,
+      0.94,
+      0.95
+    ],
+    "cost_per_applicant": [
+      1.5,
+      1.5,
+      1.5,
+      1.49375,
+      1.49375,
+      1.49375,
+      1.49375,
+      1.49375,
+      1.4875,
+      1.475,
+      1.475,
+      1.46375,
+      1.45125,
+      1.445,
+      1.435,
+      1.41625,
+      1.41625,
+      1.3925,
+      1.38625,
+      1.37375,
+      1.3425,
+      1.325,
+      1.3075,
+      1.29875,
+      1.2675,
+      1.23875,
+      1.22625,
+      1.20375,
+      1.1675,
+      1.14,
+      1.09875,
+      1.08125,
+      1.02125,
+      0.98875,
+      0.96625,
+      0.95,
+      0.93125,
+      0.91125,
+      0.8775,
+      0.84625,
+      0.79875,
+      0.77625,
+      0.7575,
+      0.74625,
+      0.725,
+      0.70875,
+      0.69125,
+      0.67625,
+      0.65625,
+      0.63375,
+      0.63,
+      0.63375,
+      0.62875,
+      0.6125,
+      0.6225,
+      0.61125,
+      0.5975,
+      0.595,
+      0.58125,
+      0.55875,
+      0.5725,
+      0.57125,
+      0.5525,
+      0.52625,
+      0.51625,
+      0.53125,
+      0.53625,
+      0.53875,
+      0.54125,
+      0.55125,
+      0.54875,
+      0.56375,
+      0.575,
+      0.57625,
+      0.5825,
+      0.56875,
+      0.56,
+      0.5725,
+      0.57625,
+      0.585,
+      0.5925,
+      0.605,
+      0.61375,
+      0.61375,
+      0.62375,
+      0.63125,
+      0.63875,
+      0.6475,
+      0.665,
+      0.66875,
+      0.67375
+    ]
+  },
+  "fairness_oof": [
+    {
+      "attribute": "sex",
+      "group": "female",
+      "n": 250,
+      "n_positive": 161,
+      "n_negative": 89,
+      "base_rate": 0.644,
+      "approval_rate": 0.356,
+      "tpr": 0.5031055900621118,
+      "fpr": 0.0898876404494382,
+      "precision": 0.9101123595505618,
+      "reference_group": "male",
+      "demographic_parity_gap": -0.04400000000000004,
+      "equal_opportunity_gap": -0.0006538084341288775,
+      "disparate_impact": 0.8899999999999999,
+      "outside_four_fifths": false
+    },
+    {
+      "attribute": "sex",
+      "group": "male",
+      "n": 550,
+      "n_positive": 399,
+      "n_negative": 151,
+      "base_rate": 0.7254545454545455,
+      "approval_rate": 0.4,
+      "tpr": 0.5037593984962406,
+      "fpr": 0.12582781456953643,
+      "precision": 0.9136363636363637,
+      "reference_group": "male",
+      "demographic_parity_gap": 0.0,
+      "equal_opportunity_gap": 0.0,
+      "disparate_impact": 1.0,
+      "outside_four_fifths": false
+    },
+    {
+      "attribute": "age_band",
+      "group": "25 and over",
+      "n": 679,
+      "n_positive": 488,
+      "n_negative": 191,
+      "base_rate": 0.7187039764359352,
+      "approval_rate": 0.422680412371134,
+      "tpr": 0.5389344262295082,
+      "fpr": 0.1256544502617801,
+      "precision": 0.9163763066202091,
+      "reference_group": "25 and over",
+      "demographic_parity_gap": 0.0,
+      "equal_opportunity_gap": 0.0,
+      "disparate_impact": 1.0,
+      "outside_four_fifths": false
+    },
+    {
+      "attribute": "age_band",
+      "group": "Under 25",
+      "n": 121,
+      "n_positive": 72,
+      "n_negative": 49,
+      "base_rate": 0.5950413223140496,
+      "approval_rate": 0.18181818181818182,
+      "tpr": 0.2638888888888889,
+      "fpr": 0.061224489795918366,
+      "precision": 0.8636363636363636,
+      "reference_group": "25 and over",
+      "demographic_parity_gap": -0.2408622305529522,
+      "equal_opportunity_gap": -0.27504553734061926,
+      "disparate_impact": 0.43015521064301554,
+      "outside_four_fifths": true
+    },
+    {
+      "attribute": "foreign_worker",
+      "group": "no",
+      "n": 28,
+      "n_positive": 25,
+      "n_negative": 3,
+      "base_rate": 0.8928571428571429,
+      "approval_rate": 0.4642857142857143,
+      "tpr": 0.52,
+      "fpr": 0.0,
+      "precision": 1.0,
+      "reference_group": "no",
+      "demographic_parity_gap": 0.0,
+      "equal_opportunity_gap": 0.0,
+      "disparate_impact": 1.0,
+      "outside_four_fifths": false
+    },
+    {
+      "attribute": "foreign_worker",
+      "group": "yes",
+      "n": 772,
+      "n_positive": 535,
+      "n_negative": 237,
+      "base_rate": 0.6930051813471503,
+      "approval_rate": 0.38341968911917096,
+      "tpr": 0.502803738317757,
+      "fpr": 0.11392405063291139,
+      "precision": 0.9087837837837838,
+      "reference_group": "no",
+      "demographic_parity_gap": -0.08086602516654334,
+      "equal_opportunity_gap": -0.017196261682242975,
+      "disparate_impact": 0.8258270227182144,
+      "outside_four_fifths": false
+    }
+  ],
+  "fairness_holdout": [
+    {
+      "attribute": "sex",
+      "group": "female",
+      "n": 60,
+      "n_positive": 40,
+      "n_negative": 20,
+      "base_rate": 0.6666666666666666,
+      "approval_rate": 0.26666666666666666,
+      "tpr": 0.35,
+      "fpr": 0.1,
+      "precision": 0.875,
+      "reference_group": "male",
+      "demographic_parity_gap": -0.13333333333333336,
+      "equal_opportunity_gap": -0.18000000000000005,
+      "disparate_impact": 0.6666666666666666,
+      "outside_four_fifths": true
+    },
+    {
+      "attribute": "sex",
+      "group": "male",
+      "n": 140,
+      "n_positive": 100,
+      "n_negative": 40,
+      "base_rate": 0.7142857142857143,
+      "approval_rate": 0.4,
+      "tpr": 0.53,
+      "fpr": 0.075,
+      "precision": 0.9464285714285714,
+      "reference_group": "male",
+      "demographic_parity_gap": 0.0,
+      "equal_opportunity_gap": 0.0,
+      "disparate_impact": 1.0,
+      "outside_four_fifths": false
+    },
+    {
+      "attribute": "age_band",
+      "group": "25 and over",
+      "n": 172,
+      "n_positive": 124,
+      "n_negative": 48,
+      "base_rate": 0.7209302325581395,
+      "approval_rate": 0.3953488372093023,
+      "tpr": 0.5080645161290323,
+      "fpr": 0.10416666666666667,
+      "precision": 0.9264705882352942,
+      "reference_group": "25 and over",
+      "demographic_parity_gap": 0.0,
+      "equal_opportunity_gap": 0.0,
+      "disparate_impact": 1.0,
+      "outside_four_fifths": false
+    },
+    {
+      "attribute": "age_band",
+      "group": "Under 25",
+      "n": 28,
+      "n_positive": 16,
+      "n_negative": 12,
+      "base_rate": 0.5714285714285714,
+      "approval_rate": 0.14285714285714285,
+      "tpr": 0.25,
+      "fpr": 0.0,
+      "precision": 1.0,
+      "reference_group": "25 and over",
+      "demographic_parity_gap": -0.25249169435215946,
+      "equal_opportunity_gap": -0.25806451612903225,
+      "disparate_impact": 0.36134453781512604,
+      "outside_four_fifths": true
+    },
+    {
+      "attribute": "foreign_worker",
+      "group": "no",
+      "n": 9,
+      "n_positive": 8,
+      "n_negative": 1,
+      "base_rate": 0.8888888888888888,
+      "approval_rate": 0.6666666666666666,
+      "tpr": 0.75,
+      "fpr": 0.0,
+      "precision": 1.0,
+      "reference_group": "no",
+      "demographic_parity_gap": 0.0,
+      "equal_opportunity_gap": 0.0,
+      "disparate_impact": 1.0,
+      "outside_four_fifths": false
+    },
+    {
+      "attribute": "foreign_worker",
+      "group": "yes",
+      "n": 191,
+      "n_positive": 132,
+      "n_negative": 59,
+      "base_rate": 0.6910994764397905,
+      "approval_rate": 0.34554973821989526,
+      "tpr": 0.4621212121212121,
+      "fpr": 0.0847457627118644,
+      "precision": 0.9242424242424242,
+      "reference_group": "no",
+      "demographic_parity_gap": -0.32111692844677137,
+      "equal_opportunity_gap": -0.2878787878787879,
+      "disparate_impact": 0.518324607329843,
+      "outside_four_fifths": true
+    }
+  ],
+  "sensitive_feature_comparison": {
+    "note": "Same model family and hyperparameters as the deployed scorer, refit in cross-validation with personal_status and foreign_worker added back. This is not a second search, and it is not used to pick the deployed model.",
+    "columns": [
+      "checking_status",
+      "duration",
+      "credit_history",
+      "purpose",
+      "credit_amount",
+      "savings_status",
+      "employment",
+      "installment_commitment",
+      "personal_status",
+      "other_parties",
+      "residence_since",
+      "property_magnitude",
+      "age",
+      "other_payment_plans",
+      "housing",
+      "existing_credits",
+      "job",
+      "num_dependents",
+      "own_telephone",
+      "foreign_worker"
+    ],
+    "cv_roc_auc_mean": 0.7951078869047619,
+    "cv_roc_auc_std": 0.06842729254836921,
+    "policy_cv_roc_auc_mean": 0.795014880952381,
+    "auc_difference_vs_policy": 9.300595238082021e-05,
+    "auc_lift_from_sensitive_fields": 9.300595238082021e-05
+  },
+  "age_feature_comparison": {
+    "note": "Same model family and hyperparameters, with age removed from an otherwise unchanged policy feature set. Not used to choose the deployed model.",
+    "columns": [
+      "checking_status",
+      "duration",
+      "credit_history",
+      "purpose",
+      "credit_amount",
+      "savings_status",
+      "employment",
+      "installment_commitment",
+      "other_parties",
+      "residence_since",
+      "property_magnitude",
+      "other_payment_plans",
+      "housing",
+      "existing_credits",
+      "job",
+      "num_dependents",
+      "own_telephone"
+    ],
+    "cv_roc_auc_mean": 0.7843936011904763,
+    "cv_roc_auc_std": 0.07299931682697956,
+    "policy_cv_roc_auc_mean": 0.795014880952381,
+    "auc_difference_vs_policy": -0.010621279761904745
+  },
+  "permutation_importance": [
+    {
+      "feature": "checking_status",
+      "label": "Checking account status",
+      "importance_mean": 0.14840476190476184,
+      "importance_std": 0.03684889011826334
+    },
+    {
+      "feature": "savings_status",
+      "label": "Savings account / bonds",
+      "importance_mean": 0.030734126984126933,
+      "importance_std": 0.010703867656918694
+    },
+    {
+      "feature": "duration",
+      "label": "Loan duration (months)",
+      "importance_mean": 0.020535714285714234,
+      "importance_std": 0.009423855442351461
+    },
+    {
+      "feature": "credit_history",
+      "label": "Credit history",
+      "importance_mean": 0.02003174603174603,
+      "importance_std": 0.011601837751142258
+    },
+    {
+      "feature": "credit_amount",
+      "label": "Credit amount (DM)",
+      "importance_mean": 0.01749603174603174,
+      "importance_std": 0.005690694799989376
+    },
+    {
+      "feature": "employment",
+      "label": "Time with current employer",
+      "importance_mean": 0.008174603174603168,
+      "importance_std": 0.0043188023124424435
+    },
+    {
+      "feature": "job",
+      "label": "Job type",
+      "importance_mean": 0.004714285714285679,
+      "importance_std": 0.0027526528124100507
+    },
+    {
+      "feature": "other_payment_plans",
+      "label": "Other installment plans",
+      "importance_mean": 0.003992063492063447,
+      "importance_std": 0.007121643985144599
+    },
+    {
+      "feature": "other_parties",
+      "label": "Other debtors or guarantors",
+      "importance_mean": 0.0018571428571428387,
+      "importance_std": 0.0081003485269773
+    },
+    {
+      "feature": "property_magnitude",
+      "label": "Property",
+      "importance_mean": 0.00089682539682537,
+      "importance_std": 0.006186486300704424
+    },
+    {
+      "feature": "existing_credits",
+      "label": "Existing credits at this bank",
+      "importance_mean": -0.0004206349206349695,
+      "importance_std": 0.0023601738836147284
+    },
+    {
+      "feature": "residence_since",
+      "label": "Years at current residence",
+      "importance_mean": -0.0011666666666667305,
+      "importance_std": 0.0050000377927520955
+    },
+    {
+      "feature": "age",
+      "label": "Age (years)",
+      "importance_mean": -0.0013214285714286142,
+      "importance_std": 0.0044940647009030985
+    },
+    {
+      "feature": "installment_commitment",
+      "label": "Installment rate (1\u20134 scale)",
+      "importance_mean": -0.0015793650793651138,
+      "importance_std": 0.005537692370029623
+    },
+    {
+      "feature": "own_telephone",
+      "label": "Telephone in the applicant's name",
+      "importance_mean": -0.0019444444444444598,
+      "importance_std": 0.003970237599454209
+    },
+    {
+      "feature": "num_dependents",
+      "label": "Dependents",
+      "importance_mean": -0.0028253968253968567,
+      "importance_std": 0.0019732080510168485
+    },
+    {
+      "feature": "housing",
+      "label": "Housing",
+      "importance_mean": -0.0034761904761905216,
+      "importance_std": 0.005067794360719427
+    },
+    {
+      "feature": "purpose",
+      "label": "Loan purpose",
+      "importance_mean": -0.020412698412698445,
+      "importance_std": 0.00949945961253633
+    }
+  ],
+  "logistic_coefficients": [
+    {
+      "feature": "Checking account status = No checking account",
+      "coefficient": 0.7663344131697438,
+      "abs_coefficient": 0.7663344131697438
+    },
+    {
+      "feature": "Loan purpose = Used car",
+      "coefficient": 0.6641416059894012,
+      "abs_coefficient": 0.6641416059894012
+    },
+    {
+      "feature": "Checking account status = Overdrawn (under 0 DM)",
+      "coefficient": -0.568854358600055,
+      "abs_coefficient": 0.568854358600055
+    },
+    {
+      "feature": "Loan purpose = New car",
+      "coefficient": -0.514995180127533,
+      "abs_coefficient": 0.514995180127533
+    },
+    {
+      "feature": "Credit history = Critical account, or credits at other banks",
+      "coefficient": 0.5116099198732456,
+      "abs_coefficient": 0.5116099198732456
+    },
+    {
+      "feature": "Savings account / bonds = Under 100 DM",
+      "coefficient": -0.4262329751314216,
+      "abs_coefficient": 0.4262329751314216
+    },
+    {
+      "feature": "Other debtors or guarantors = Guarantor",
+      "coefficient": 0.39064119046144835,
+      "abs_coefficient": 0.39064119046144835
+    },
+    {
+      "feature": "Other installment plans = None",
+      "coefficient": 0.3592150009429861,
+      "abs_coefficient": 0.3592150009429861
+    },
+    {
+      "feature": "Time with current employer = 4 to under 7 years",
+      "coefficient": 0.3391936410400897,
+      "abs_coefficient": 0.3391936410400897
+    },
+    {
+      "feature": "Loan purpose = Education",
+      "coefficient": -0.32540053850679507,
+      "abs_coefficient": 0.32540053850679507
+    },
+    {
+      "feature": "Loan duration (months)",
+      "coefficient": -0.31947784607307356,
+      "abs_coefficient": 0.31947784607307356
+    },
+    {
+      "feature": "Loan purpose = Radio or TV",
+      "coefficient": 0.2886794487091378,
+      "abs_coefficient": 0.2886794487091378
+    },
+    {
+      "feature": "Checking account status = Balance from 0 to under 200 DM",
+      "coefficient": -0.2885989364133586,
+      "abs_coefficient": 0.2885989364133586
+    },
+    {
+      "feature": "Property = No known property",
+      "coefficient": -0.28074136616639234,
+      "abs_coefficient": 0.28074136616639234
+    },
+    {
+      "feature": "Savings account / bonds = No known savings account",
+      "coefficient": 0.2792344138702417,
+      "abs_coefficient": 0.2792344138702417
+    },
+    {
+      "feature": "Installment rate (1\u20134 scale)",
+      "coefficient": -0.2724606985985286,
+      "abs_coefficient": 0.2724606985985286
+    },
+    {
+      "feature": "Housing = Rent",
+      "coefficient": -0.230519067424317,
+      "abs_coefficient": 0.230519067424317
+    },
+    {
+      "feature": "Age (years)",
+      "coefficient": 0.22323470763583989,
+      "abs_coefficient": 0.22323470763583989
+    },
+    {
+      "feature": "Other debtors or guarantors = Co-applicant",
+      "coefficient": -0.22170377677745468,
+      "abs_coefficient": 0.22170377677745468
+    },
+    {
+      "feature": "Credit history = No credits taken, or all paid duly",
+      "coefficient": -0.22036080274996497,
+      "abs_coefficient": 0.22036080274996497
+    },
+    {
+      "feature": "Credit amount (DM)",
+      "coefficient": -0.21876958031588384,
+      "abs_coefficient": 0.21876958031588384
+    },
+    {
+      "feature": "Credit history = All credits at this bank paid duly",
+      "coefficient": -0.21081282940272972,
+      "abs_coefficient": 0.21081282940272972
+    },
+    {
+      "feature": "Other installment plans = Bank",
+      "coefficient": -0.20743718384153104,
+      "abs_coefficient": 0.20743718384153104
+    },
+    {
+      "feature": "Savings account / bonds = 1,000 DM or more",
+      "coefficient": 0.20658576751300872,
+      "abs_coefficient": 0.20658576751300872
+    },
+    {
+      "feature": "Property = Real estate",
+      "coefficient": 0.20231032411471866,
+      "abs_coefficient": 0.20231032411471866
+    },
+    {
+      "feature": "Time with current employer = Less than 1 year",
+      "coefficient": -0.19642086961048624,
+      "abs_coefficient": 0.19642086961048624
+    },
+    {
+      "feature": "Other debtors or guarantors = None",
+      "coefficient": -0.16959719396159084,
+      "abs_coefficient": 0.16959719396159084
+    },
+    {
+      "feature": "Other installment plans = Stores",
+      "coefficient": -0.1524375973790523,
+      "abs_coefficient": 0.1524375973790523
+    },
+    {
+      "feature": "Housing = Own",
+      "coefficient": 0.14980559161363477,
+      "abs_coefficient": 0.14980559161363477
+    },
+    {
+      "feature": "Job type = Management, self-employed, or highly qualified",
+      "coefficient": 0.13880459966033595,
+      "abs_coefficient": 0.13880459966033595
+    },
+    {
+      "feature": "Loan purpose = Repairs",
+      "coefficient": -0.13833158949256288,
+      "abs_coefficient": 0.13833158949256288
+    },
+    {
+      "feature": "Telephone in the applicant's name = No telephone in the applicant's name",
+      "coefficient": -0.13183736268665208,
+      "abs_coefficient": 0.13183736268665208
+    },
+    {
+      "feature": "Telephone in the applicant's name = Yes, registered in the applicant's name",
+      "coefficient": 0.1311775824090545,
+      "abs_coefficient": 0.1311775824090545
+    },
+    {
+      "feature": "Job type = Unemployed or unskilled, non-resident",
+      "coefficient": -0.11991090426711248,
+      "abs_coefficient": 0.11991090426711248
+    },
+    {
+      "feature": "Time with current employer = Unemployed",
+      "coefficient": -0.09631995455128431,
+      "abs_coefficient": 0.09631995455128431
+    },
+    {
+      "feature": "Checking account status = Balance of 200 DM or more",
+      "coefficient": 0.0904591015660722,
+      "abs_coefficient": 0.0904591015660722
+    },
+    {
+      "feature": "Housing = Rent-free",
+      "coefficient": 0.08005369553308501,
+      "abs_coefficient": 0.08005369553308501
+    },
+    {
+      "feature": "Property = Car or other property",
+      "coefficient": 0.07915217272720172,
+      "abs_coefficient": 0.07915217272720172
+    },
+    {
+      "feature": "Loan purpose = Furniture or equipment",
+      "coefficient": 0.06609699168868402,
+      "abs_coefficient": 0.06609699168868402
+    },
+    {
+      "feature": "Loan purpose = Domestic appliance",
+      "coefficient": -0.05790042184009225,
+      "abs_coefficient": 0.05790042184009225
+    },
+    {
+      "feature": "Dependents",
+      "coefficient": 0.05479486345383525,
+      "abs_coefficient": 0.05479486345383525
+    },
+    {
+      "feature": "Loan purpose = Retraining",
+      "coefficient": 0.04749124444321641,
+      "abs_coefficient": 0.04749124444321641
+    },
+    {
+      "feature": "Credit history = Past payment delays",
+      "coefficient": -0.04169237777389945,
+      "abs_coefficient": 0.04169237777389945
+    },
+    {
+      "feature": "Credit history = Existing credits paid duly so far",
+      "coefficient": -0.039403690224249215,
+      "abs_coefficient": 0.039403690224249215
+    },
+    {
+      "feature": "Time with current employer = 1 to under 4 years",
+      "coefficient": -0.0355724857549403,
+      "abs_coefficient": 0.0355724857549403
+    },
+    {
+      "feature": "Loan purpose = Other",
+      "coefficient": -0.03320944495472863,
+      "abs_coefficient": 0.03320944495472863
+    },
+    {
+      "feature": "Years at current residence",
+      "coefficient": -0.032357410952660114,
+      "abs_coefficient": 0.032357410952660114
+    },
+    {
+      "feature": "Savings account / bonds = 500 to under 1,000 DM",
+      "coefficient": -0.03051924073778157,
+      "abs_coefficient": 0.03051924073778157
+    },
+    {
+      "feature": "Savings account / bonds = 100 to under 500 DM",
+      "coefficient": -0.029727745791645138,
+      "abs_coefficient": 0.029727745791645138
+    },
+    {
+      "feature": "Existing credits at this bank",
+      "coefficient": -0.015490826967391578,
+      "abs_coefficient": 0.015490826967391578
+    },
+    {
+      "feature": "Job type = Skilled employee or official",
+      "coefficient": -0.013107814421134702,
+      "abs_coefficient": 0.013107814421134702
+    },
+    {
+      "feature": "Time with current employer = 7 years or more",
+      "coefficient": -0.01154011140097625,
+      "abs_coefficient": 0.01154011140097625
+    },
+    {
+      "feature": "Job type = Unskilled resident",
+      "coefficient": -0.00644566124968629,
+      "abs_coefficient": 0.00644566124968629
+    },
+    {
+      "feature": "Loan purpose = Business",
+      "coefficient": 0.0027681038136747726,
+      "abs_coefficient": 0.0027681038136747726
+    },
+    {
+      "feature": "Property = Life insurance or building-society savings",
+      "coefficient": -0.0013809109531255938,
+      "abs_coefficient": 0.0013809109531255938
+    }
+  ],
+  "reference_profile": {
+    "checking_status": "no checking",
+    "duration": 18.0,
+    "credit_history": "existing paid",
+    "purpose": "radio/tv",
+    "credit_amount": 2246.5,
+    "savings_status": "<100",
+    "employment": "1<=X<4",
+    "installment_commitment": 3.0,
+    "other_parties": "none",
+    "residence_since": 3.0,
+    "property_magnitude": "car",
+    "age": 33.0,
+    "other_payment_plans": "none",
+    "housing": "own",
+    "existing_credits": 1.0,
+    "job": "skilled",
+    "num_dependents": 1.0,
+    "own_telephone": "none"
+  },
+  "training_ranges": {
+    "duration": {
+      "min": 4.0,
+      "max": 72.0
+    },
+    "credit_amount": {
+      "min": 250.0,
+      "max": 18424.0
+    },
+    "installment_commitment": {
+      "min": 1.0,
+      "max": 4.0
+    },
+    "residence_since": {
+      "min": 1.0,
+      "max": 4.0
+    },
+    "age": {
+      "min": 20.0,
+      "max": 75.0
+    },
+    "existing_credits": {
+      "min": 1.0,
+      "max": 4.0
+    },
+    "num_dependents": {
+      "min": 1.0,
+      "max": 2.0
+    }
+  },
+  "feature_columns": [
+    "checking_status",
+    "duration",
+    "credit_history",
+    "purpose",
+    "credit_amount",
+    "savings_status",
+    "employment",
+    "installment_commitment",
+    "other_parties",
+    "residence_since",
+    "property_magnitude",
+    "age",
+    "other_payment_plans",
+    "housing",
+    "existing_credits",
+    "job",
+    "num_dependents",
+    "own_telephone"
+  ],
+  "sklearn_version": "1.9.1",
+  "data_sha256": "d0baf9fddd41e5a6af0ba84e6037a415f11384dd40c494186563a2d3b68f5c25"
+}

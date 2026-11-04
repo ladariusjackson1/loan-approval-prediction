@@ -1,0 +1,37 @@
+[project]
+name = "loan-approval"
+version = "1.0.0"
+description = "Educational loan-approval scorer on the UCI Statlog German Credit dataset."
+requires-python = ">=3.11"
+readme = "README.md"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "--cov=loan_approval --cov-report=term-missing --cov-fail-under=85"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.coverage.run]
+source = ["loan_approval"]
+branch = false
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests", "app"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["loan_approval"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/loan_approval/plots.py" = ["E402"]
+"app/streamlit_app.py" = ["E402"]
