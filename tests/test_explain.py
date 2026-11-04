@@ -14,6 +14,7 @@ from sklearn.preprocessing import StandardScaler
 from loan_approval.config import PRESETS
 from loan_approval.explain import (
     ApplicationError,
+    decision_narrative,
     decision_summary,
     describe_value,
     explain_application,
@@ -74,6 +75,10 @@ def test_explain_application_flags_review_and_out_of_range_values():
     assert result["decision"] == "Approve"
     assert result["out_of_range"] == ["x"]
     assert "Approve" in result["summary"]
+    assert "fully paid" in result["narrative"]
+    assert "pushed the decision toward approval" in result["narrative"]
+    assert result["reasons_for"]
+    assert result["reasons_for"][0]["actual_text"] in result["narrative"]
     near = explain_application(
         pipeline,
         {"x": 0.0, "z": 0},
@@ -85,57 +90,96 @@ def test_explain_application_flags_review_and_out_of_range_values():
     assert near["refer_to_analyst"] is True
     assert near["reasons_for"] == []
     assert near["reasons_against"] == []
+    assert "No single field pushed the decision" in near["narrative"]
 
 
 def test_application_validation_errors():
     with pytest.raises(ApplicationError, match="Missing fields"):
-        frame_from_application({"duration": 12}, ["duration", "purpose"])
+        frame_from_application({"fico": 700}, ["fico", "purpose"])
     with pytest.raises(ApplicationError, match="numeric"):
-        frame_from_application({"duration": "soon", "purpose": "radio/tv"}, ["duration", "purpose"])
+        frame_from_application(
+            {"fico": "high", "purpose": "debt_consolidation"}, ["fico", "purpose"]
+        )
     with pytest.raises(ApplicationError, match="finite"):
         frame_from_application(
-            {"duration": math.nan, "purpose": "radio/tv"}, ["duration", "purpose"]
+            {"fico": math.nan, "purpose": "debt_consolidation"}, ["fico", "purpose"]
         )
     with pytest.raises(ApplicationError, match="required"):
-        frame_from_application({"duration": 12, "purpose": "  "}, ["duration", "purpose"])
+        frame_from_application({"fico": 700, "purpose": "  "}, ["fico", "purpose"])
 
 
 def test_presets_and_sentence_cover_known_and_unknown_fields():
-    reference = {"checking_status": "no checking", "duration": 18, "purpose": "radio/tv"}
+    reference = {"purpose": "debt_consolidation", "fico": 707, "dti": 12.6}
     typical = preset_payload("Typical training profile", reference, PRESETS)
     assert typical == reference
     stronger = preset_payload("Stronger file", reference, PRESETS)
-    assert stronger["checking_status"] == "no checking"
-    assert stronger["savings_status"] == ">=1000"
-    assert stronger["purpose"] == "used car"
-    broken = {"Broken": {"checking_status": "not a real code"}}
+    assert stronger["fico"] == 770
+    assert stronger["purpose"] == "credit_card"
+    assert stronger["dti"] == 6.5
+    broken = {"Broken": {"purpose": "not a real purpose"}}
     with pytest.raises(ApplicationError, match="unknown categories"):
         preset_payload("Broken", reference, broken)
-    assert "DM" in describe_value("credit_amount", 1500)
-    assert "months" in describe_value("duration", 12)
-    assert describe_value("checking_status", "<0").startswith("Overdrawn")
+    assert "a year" in describe_value("log_annual_inc", math.log(55000))
+    assert "per month" in describe_value("installment", 319)
+    assert describe_value("purpose", "small_business") == "Small business"
+    assert describe_value("fico", 662) == "662"
+    assert describe_value("credit_policy", 1) == "Meets policy"
+    assert describe_value("credit_policy", 0) == "Outside policy"
+    assert describe_value("int_rate", 0.1226) == "12.3%"
+    assert describe_value("dti", 12.66) == "12.7%"
+    assert "years" in describe_value("days_with_cr_line", 3652.5)
+    assert describe_value("revol_bal", 8596) == "$8,596"
+    assert describe_value("revol_util", 46.2) == "46%"
+    assert describe_value("inq_last_6mths", 1) == "1"
     assert describe_value("mystery", "raw") == "raw"
     text = reason_sentence(
         {
-            "label": "Age (years)",
-            "actual_text": "22 years",
-            "reference_text": "33 years",
+            "label": "FICO score",
+            "actual_text": "662",
+            "reference_text": "707",
             "delta": -0.08,
         }
     )
-    assert "lowers" in text
+    assert "pushed the decision toward a decline" in text
+    assert "lowered" in text
     flat = reason_sentence(
         {
-            "label": "Dependents",
-            "actual_text": "1",
-            "reference_text": "1",
+            "label": "Derogatory public records",
+            "actual_text": "0",
+            "reference_text": "0",
             "delta": 0.0,
         }
     )
     assert "barely moves" in flat
 
 
-def test_decision_summary_states_which_side_of_the_cutoff():
+def test_decision_summary_and_narrative_name_what_pushed_the_decision():
     text = decision_summary("Decline", 0.42, 0.60)
     assert "Decline" in text
     assert "below" in text
+    assert "fully paid" in text
+    narrative = decision_narrative(
+        "Decline",
+        0.42,
+        0.60,
+        reasons_for=[
+            {
+                "label": "Annual income",
+                "actual_text": "$90,000 a year",
+                "reference_text": "$55,000 a year",
+            }
+        ],
+        reasons_against=[
+            {
+                "label": "FICO score",
+                "actual_text": "640",
+                "reference_text": "707",
+            }
+        ],
+    )
+    assert narrative.startswith("Decline.")
+    assert "so the application is declined" in narrative
+    assert "What pushed the decision toward a decline: FICO score is 640" in narrative
+    assert "What pushed the decision toward approval: Annual income is $90,000 a year" in narrative
+    quiet = decision_narrative("Approve", 0.70, 0.50, [], [])
+    assert "No single field pushed the decision" in quiet

@@ -18,7 +18,7 @@ BUNDLE_KEYS = ("pipeline", "threshold", "reference", "feature_columns", "model_n
 def save_bundle(path: Path, bundle: dict[str, Any]) -> None:
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(bundle, destination)
+    joblib.dump(bundle, destination, compress=3)
 
 
 def load_bundle(path: Path) -> dict[str, Any]:

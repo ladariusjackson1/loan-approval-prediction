@@ -103,8 +103,8 @@ def test_contribution_figure_handles_an_empty_reason_list():
 
 
 def test_transformed_names_and_coefficient_guard():
-    assert pretty_transformed_name("numeric__age") == "Age (years)"
-    assert "Overdrawn" in pretty_transformed_name("categorical__checking_status_<0")
+    assert pretty_transformed_name("numeric__fico") == "FICO score"
+    assert "Small business" in pretty_transformed_name("categorical__purpose_small_business")
     assert pretty_transformed_name("other") == "other"
     pipeline = type("Bare", (), {})()
     with pytest.raises(TypeError, match="linear classifier"):

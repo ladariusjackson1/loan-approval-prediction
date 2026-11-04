@@ -18,8 +18,9 @@ from loan_approval.artifacts import (
     save_model_card,
 )
 from loan_approval.config import DATA_PATH, MODEL_CARD_PATH, MODEL_PATH
-from loan_approval.data import DatasetError, load_credit_data
+from loan_approval.data import DatasetError, load_loan_data
 from loan_approval.explain import explain_application
+from loan_approval.metrics import dollars
 from loan_approval.train import main
 from loan_approval.training import ExperimentConfig, _select_winner, run_experiment
 
@@ -50,13 +51,13 @@ def test_winner_tie_breaks_toward_the_simpler_model():
 
 def test_run_experiment_rejects_a_single_class(synthetic_credit):
     frame = synthetic_credit.copy()
-    frame["class"] = "good"
-    with pytest.raises(DatasetError, match="Both good and bad"):
+    frame["not_fully_paid"] = 0
+    with pytest.raises(DatasetError, match="Both fully paid and not fully paid"):
         run_experiment(frame, ExperimentConfig(cv_folds=2, n_iter=1, n_jobs=1))
 
 
 def test_cli_trains_a_toy_file_and_writes_figures(tmp_path, synthetic_credit):
-    data_path = tmp_path / "credit-g.csv"
+    data_path = tmp_path / "lending_club_sample.csv"
     synthetic_credit.to_csv(data_path, index=False)
     figure_dir = tmp_path / "figures"
     main(
@@ -139,23 +140,54 @@ def test_artifact_helpers_reject_bad_bundles_and_sanitize_json(tmp_path):
     )
 
 
-def test_shipped_model_matches_the_readme_and_scores_a_real_row():
+def test_repo_is_ready_for_streamlit_community_cloud():
+    root = DATA_PATH.parents[1]
+    requirements = (root / "requirements.txt").read_text(encoding="utf-8")
+    pinned = [line.strip() for line in requirements.splitlines() if line.strip()]
+    assert pinned
+    assert all("==" in line and not line.startswith("-r") for line in pinned)
+    assert "pytest" not in requirements
+    dev = (root / "requirements-dev.txt").read_text(encoding="utf-8")
+    assert "-r requirements.txt" in dev
+    assert "pytest==" in dev
+    assert (root / "runtime.txt").read_text(encoding="utf-8").strip() == "python-3.12"
+    config = (root / ".streamlit" / "config.toml").read_text(encoding="utf-8")
+    assert "[theme]" in config
+    entry = (root / "streamlit_app.py").read_text(encoding="utf-8")
+    assert "app.streamlit_app" in entry
+    assert "streamlit run streamlit_app.py" in entry
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    assert "https://loan-approval-prediction.streamlit.app" in readme
+    assert "docs/demo.gif" in readme
+    assert (root / "docs" / "demo.gif").is_file()
+
+
+def test_shipped_model_matches_the_readme_and_explains_a_real_row():
     card = load_model_card(MODEL_CARD_PATH)
     bundle = load_bundle(MODEL_PATH)
-    readme = (DATA_PATH.parents[1] / "README.md").read_text(encoding="utf-8")
+    root = DATA_PATH.parents[1]
+    readme = (root / "README.md").read_text(encoding="utf-8")
     holdout = card["holdout"]
+    money = card["money"]
     assert bundle["model_name"] == card["winner"]["model"]
-    assert holdout["roc_auc"] > 0.65
-    assert holdout["n"] == 200
-    assert sum(sum(row) for row in holdout["confusion_matrix"]) == 200
+    assert holdout["roc_auc"] > 0.6
+    assert holdout["n"] > 1000
+    assert sum(sum(row) for row in holdout["confusion_matrix"]) == holdout["n"]
     assert f"{holdout['roc_auc']:.3f}" in readme
     assert f"{holdout['f1']:.3f}" in readme
+    assert f"{holdout['threshold']:.2f}" in readme
+    assert dollars(float(holdout["cost_per_applicant"])) in readme
+    assert dollars(float(money["saved_total_vs_better_naive"])) in readme
+    assert dollars(float(money["model_cost_total"])) in readme
     assert card["winner"]["display_name"] in readme
+    assert "43729" in readme
+    assert "CC0" in readme
     assert card["data_sha256"] == file_sha256(DATA_PATH)
-    assert "personal_status" not in bundle["feature_columns"]
-    assert "foreign_worker" not in bundle["feature_columns"]
+    assert "credit_policy" not in bundle["feature_columns"]
+    assert "int_rate" not in bundle["feature_columns"]
+    assert bundle["feature_columns"]
 
-    row = load_credit_data().iloc[0]
+    row = load_loan_data().iloc[0]
     payload = {column: row[column] for column in bundle["feature_columns"]}
     explained = explain_application(
         bundle["pipeline"],
@@ -166,4 +198,6 @@ def test_shipped_model_matches_the_readme_and_scores_a_real_row():
         ranges=bundle["ranges"],
     )
     assert explained["decision"] in {"Approve", "Decline"}
+    assert "fully paid" in explained["narrative"]
+    assert "pushed" in explained["narrative"]
     assert len(explained["contributions"]) == len(bundle["feature_columns"])

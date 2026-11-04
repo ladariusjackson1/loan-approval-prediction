@@ -17,7 +17,7 @@ from loan_approval.config import (
     RANDOM_STATE,
     REVIEW_BAND,
 )
-from loan_approval.data import load_credit_data
+from loan_approval.data import load_loan_data
 from loan_approval.plots import (
     plot_calibration,
     plot_class_balance,
@@ -34,7 +34,7 @@ from loan_approval.training import ExperimentConfig, ExperimentResult, run_exper
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Train the German-credit loan decision model and write the report artifacts."
+        description="Train the Lending Club loan decision model and write the report artifacts."
     )
     parser.add_argument("--data", type=Path, default=DATA_PATH)
     parser.add_argument("--model-path", type=Path, default=MODEL_PATH)
@@ -47,14 +47,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--download",
         action="store_true",
-        help="Refresh data/credit-g.csv from OpenML data id 31 before training.",
+        help="Refresh data/lending_club_sample.csv from OpenML data id 43729 before training.",
     )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> ExperimentResult:
     args = parse_args(argv)
-    frame = load_credit_data(args.data, download=args.download)
+    frame = load_loan_data(args.data, download=args.download)
     result = run_experiment(
         frame,
         ExperimentConfig(
@@ -81,11 +81,14 @@ def main(argv: list[str] | None = None) -> ExperimentResult:
     )
     _save_figures(result, args.figure_dir)
     holdout = card["holdout"]
+    money = card["money"]
     print(
         f"Deployed {DISPLAY_NAMES[result.model_name]} | "
         f"holdout ROC-AUC {holdout['roc_auc']:.3f} | "
         f"F1 {holdout['f1']:.3f} | "
-        f"cost/applicant {holdout['cost_per_applicant']:.3f} | "
+        f"cost/applicant ${holdout['cost_per_applicant']:.2f} | "
+        f"saved vs {money['better_naive_rule']} "
+        f"${money['saved_total_vs_better_naive']:.2f} | "
         f"threshold {result.threshold:.2f}"
     )
     print(f"Model card: {args.card_path}")

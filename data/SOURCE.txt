@@ -1,0 +1,19 @@
+Lending Club loan sample cached for offline training, tests, CI, and the Streamlit app.
+
+OpenML name: Lending-Club-Loan-Data
+OpenML data id: 43729
+OpenML URL: https://www.openml.org/d/43729
+Licence recorded by OpenML: CC0: Public Domain
+Fetch: sklearn.datasets.fetch_openml(data_id=43729, as_frame=True)
+No account and no API key.
+
+The cached CSV is the entire OpenML extract (9,578 loans, 14 columns). That extract is
+already a public sample of Lending Club loans. It is not the multi-million-row servicing tape.
+
+Target column not_fully_paid: 1 means the borrower did not fully repay, 0 means the loan was
+fully paid. The deployed model scores the chance the loan is fully paid.
+
+credit_policy and int_rate are stored here for the side comparison and are not inputs to the
+deployed score. Refresh the file with:
+
+    PYTHONPATH=src python -m loan_approval.train --download

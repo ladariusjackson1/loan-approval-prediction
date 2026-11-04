@@ -9,18 +9,21 @@ from loan_approval.fairness import binary_rates, fairness_table
 from loan_approval.metrics import (
     choose_threshold,
     classification_metrics,
+    dollars,
     expected_cost,
+    money_saved,
     policy_baselines,
 )
 
 
-def test_statlog_cost_counts_false_approvals_five_times():
+def test_planning_cost_prices_a_false_approval_at_five_thousand_dollars():
     actual = np.array([1, 1, 0, 0])
     predicted = np.array([1, 0, 1, 0])
-    assert expected_cost(actual, predicted) == 6.0
+    assert expected_cost(actual, predicted) == 5600.0
     baselines = policy_baselines(actual)
-    assert baselines["approve_all"] == 2.5
-    assert baselines["decline_all"] == 0.5
+    assert baselines["approve_all"] == 2500.0
+    assert baselines["decline_all"] == 300.0
+    assert expected_cost(actual, predicted, fp_cost=5, fn_cost=1) == 6.0
 
 
 def test_threshold_ties_break_toward_the_stricter_cutoff():
@@ -45,33 +48,65 @@ def test_classification_metrics_report_the_confusion_matrix():
     assert metrics["f1"] == 0.8
 
 
+def test_money_saved_uses_the_cheaper_rule_that_ignores_the_model():
+    metrics = {"cost_per_applicant": 400.0, "n": 10}
+    saved = money_saved(metrics, {"approve_all": 800.0, "decline_all": 500.0})
+    assert saved["better_naive_rule"] == "decline_all"
+    assert saved["saved_per_applicant_vs_better_naive"] == 100.0
+    assert saved["saved_total_vs_better_naive"] == 1000.0
+    assert saved["saved_total_vs_approve_all"] == 4000.0
+    approved = money_saved(
+        {"cost_per_applicant": 100.0, "n": 4},
+        {"approve_all": 200.0, "decline_all": 900.0},
+    )
+    assert approved["better_naive_rule"] == "approve_all"
+    assert approved["saved_total_vs_better_naive"] == 400.0
+    worse = money_saved(
+        {"cost_per_applicant": 900.0, "n": 2},
+        {"approve_all": 700.0, "decline_all": 700.0},
+    )
+    assert worse["better_naive_rule"] == "tie"
+    assert worse["saved_total_vs_better_naive"] == -400.0
+    assert dollars(1000) == "1,000.00"
+
+
 def test_fairness_gaps_use_the_reference_group_and_fall_back_to_the_largest():
     actual = np.array([1, 1, 0, 0, 1, 0])
     predicted = np.array([1, 0, 1, 0, 1, 0])
     sensitive = pd.DataFrame(
         {
-            "sex": ["male", "male", "female", "female", "female", "female"],
-            "age_band": ["25 and over"] * 6,
-            "foreign_worker": ["no"] * 6,
+            "credit_policy": [
+                "Meets policy",
+                "Meets policy",
+                "Outside policy",
+                "Outside policy",
+                "Outside policy",
+                "Outside policy",
+            ],
+            "fico_band": ["720–759"] * 6,
         }
     )
     table = fairness_table(actual, predicted, sensitive)
-    male = table.loc[(table["attribute"] == "sex") & (table["group"] == "male")].iloc[0]
-    female = table.loc[(table["attribute"] == "sex") & (table["group"] == "female")].iloc[0]
-    assert male["demographic_parity_gap"] == 0
-    assert female["reference_group"] == "male"
-    assert female["disparate_impact"] == female["approval_rate"] / male["approval_rate"]
-    assert female["outside_four_fifths"] in {True, False}
+    meets = table.loc[
+        (table["attribute"] == "credit_policy") & (table["group"] == "Meets policy")
+    ].iloc[0]
+    outside = table.loc[
+        (table["attribute"] == "credit_policy") & (table["group"] == "Outside policy")
+    ].iloc[0]
+    assert meets["demographic_parity_gap"] == 0
+    assert outside["reference_group"] == "Meets policy"
+    assert outside["disparate_impact"] == outside["approval_rate"] / meets["approval_rate"]
+    assert outside["outside_four_fifths"] in {True, False}
 
-    only_women = pd.DataFrame({"sex": ["female", "female"]})
-    fallback = fairness_table(np.array([1, 0]), np.array([1, 0]), only_women)
-    assert fallback.iloc[0]["reference_group"] == "female"
+    only_education = pd.DataFrame({"purpose": ["Education", "Education"]})
+    fallback = fairness_table(np.array([1, 0]), np.array([1, 0]), only_education)
+    assert fallback.iloc[0]["reference_group"] == "Education"
 
 
 def test_zero_approval_reference_has_no_disparate_impact_ratio():
-    sensitive = pd.DataFrame({"foreign_worker": ["no", "no", "yes"]})
+    sensitive = pd.DataFrame({"credit_policy": ["Meets policy", "Meets policy", "Outside policy"]})
     table = fairness_table(np.array([1, 0, 1]), np.array([0, 0, 1]), sensitive)
-    minority = table.loc[table["group"] == "yes"].iloc[0]
+    minority = table.loc[table["group"] == "Outside policy"].iloc[0]
     assert minority["disparate_impact"] is None
     assert minority["outside_four_fifths"] is None
 

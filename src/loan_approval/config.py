@@ -2,46 +2,66 @@
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
-DATA_PATH = PACKAGE_ROOT / "data" / "credit-g.csv"
+DATA_PATH = PACKAGE_ROOT / "data" / "lending_club_sample.csv"
 MODEL_PATH = PACKAGE_ROOT / "models" / "credit_pipeline.joblib"
 MODEL_CARD_PATH = PACKAGE_ROOT / "models" / "model_card.json"
 FIGURE_DIR = PACKAGE_ROOT / "reports" / "figures"
 
-OPENML_DATA_ID = 31
-OPENML_NAME = "credit-g"
+OPENML_DATA_ID = 43729
+OPENML_NAME = "Lending-Club-Loan-Data"
 
 DATASET = {
-    "name": "Statlog (German Credit Data)",
+    "name": "Lending Club loan sample (OpenML Lending-Club-Loan-Data)",
     "openml_name": OPENML_NAME,
     "openml_id": OPENML_DATA_ID,
-    "openml_url": "https://www.openml.org/d/31",
-    "uci_url": "https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data",
-    "doi": "https://doi.org/10.24432/C5NC77",
-    "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+    "openml_url": "https://www.openml.org/d/43729",
+    "parquet_url": "https://data.openml.org/datasets/0004/43729/dataset_43729.pq",
+    "license": "CC0: Public Domain",
     "license_notes": (
-        "The UCI Machine Learning Repository distributes Statlog (German Credit Data) "
-        "under CC BY 4.0. OpenML redistributes the same table as data id 31 (credit-g) "
-        "and records its licence field as 'Public'. This project follows the UCI CC BY 4.0 terms."
+        "OpenML data id 43729 records its licence field as 'CC0: Public Domain'. "
+        "The table is a public 9,578-loan extract with a repayment label. It is not "
+        "the full Lending Club servicing tape. This project caches that entire extract "
+        "at data/lending_club_sample.csv so training, tests, CI, and the app run offline, "
+        "with no account and no network."
     ),
     "citation": (
-        "Hofmann, H. (1994). Statlog (German Credit Data) [Dataset]. "
-        "UCI Machine Learning Repository. https://doi.org/10.24432/C5NC77."
+        "Lending-Club-Loan-Data. OpenML data id 43729. "
+        "https://www.openml.org/d/43729. Licence recorded by OpenML: CC0: Public Domain."
     ),
-    "fetched_with": "sklearn.datasets.fetch_openml(data_id=31, as_frame=True)",
+    "fetched_with": "sklearn.datasets.fetch_openml(data_id=43729, as_frame=True)",
+    "target_definition": (
+        "not_fully_paid is 1 when the borrower did not fully repay and 0 when the loan "
+        "was fully paid. The model scores the chance the loan is fully paid and approves "
+        "when that chance clears the cost cutoff."
+    ),
 }
 
-TARGET = "class"
-POSITIVE_LABEL = "good"
-NEGATIVE_LABEL = "bad"
-# 1 = good credit = approve. Matches the published Statlog cost matrix, where class 1 is good.
+TARGET = "not_fully_paid"
+# Encoded positive class: fully paid = 1 = approve. Raw 1 means the loan was not fully paid.
 POSITIVE_CLASS = 1
 
-# Published with the UCI file: approving a bad credit costs 5, declining a good credit costs 1.
-FP_COST = 5.0
-FN_COST = 1.0
+# Planning dollars, not observed charge-offs. See COST_SOURCE.
+# At the sample's mean rate (12.264%) and mean installment ($319.09), a 36-month
+# amortizing loan implies about $9,571 of principal and about $1,917 of gross interest.
+# The file does not record term or loss, so these are round weights near that sketch:
+# half of the sketched principal, and a net-contribution stand-in below the gross interest.
+FP_COST = 5000.0
+FN_COST = 600.0
+COST_SOURCE = (
+    "Planning scenario in dollars, not observed recoveries. The extract has no loan term "
+    "and no charge-off balance. At the sample mean interest rate (12.264%) and mean "
+    "monthly installment ($319.09), a 36-month amortizing loan implies about $9,571 of "
+    "principal and about $1,917 of gross interest. Funding a loan that is not fully paid "
+    "is priced at $5,000, near half of that principal sketch. Declining a loan that would "
+    "have been fully paid is priced at $600, below that gross interest, as a stand-in for "
+    "forgone net contribution after funding costs the file does not record. A different "
+    "pair of weights needs a different cutoff. The probability is saved separately so the "
+    "desk can move the cutoff without refitting."
+)
 
 RANDOM_STATE = 42
 TEST_SIZE = 0.20
@@ -49,78 +69,83 @@ CV_FOLDS = 5
 N_ITER = 16
 REVIEW_BAND = 0.05
 
+# Removed in a side refit. It stays in the deployed score; the refit only measures it.
+ABLATION_FEATURE = "fico"
+
 NUMERIC_FEATURES = [
-    "duration",
-    "credit_amount",
-    "installment_commitment",
-    "residence_since",
-    "age",
-    "existing_credits",
-    "num_dependents",
+    "credit_policy",
+    "int_rate",
+    "installment",
+    "log_annual_inc",
+    "dti",
+    "fico",
+    "days_with_cr_line",
+    "revol_bal",
+    "revol_util",
+    "inq_last_6mths",
+    "delinq_2yrs",
+    "pub_rec",
 ]
 
-CATEGORICAL_FEATURES = [
-    "checking_status",
-    "credit_history",
-    "purpose",
-    "savings_status",
-    "employment",
-    "personal_status",
-    "other_parties",
-    "property_magnitude",
-    "other_payment_plans",
-    "housing",
-    "job",
-    "own_telephone",
-    "foreign_worker",
-]
+CATEGORICAL_FEATURES = ["purpose"]
 
 FEATURE_COLUMNS = [
-    "checking_status",
-    "duration",
-    "credit_history",
+    "credit_policy",
     "purpose",
-    "credit_amount",
-    "savings_status",
-    "employment",
-    "installment_commitment",
-    "personal_status",
-    "other_parties",
-    "residence_since",
-    "property_magnitude",
-    "age",
-    "other_payment_plans",
-    "housing",
-    "existing_credits",
-    "job",
-    "num_dependents",
-    "own_telephone",
-    "foreign_worker",
+    "int_rate",
+    "installment",
+    "log_annual_inc",
+    "dti",
+    "fico",
+    "days_with_cr_line",
+    "revol_bal",
+    "revol_util",
+    "inq_last_6mths",
+    "delinq_2yrs",
+    "pub_rec",
 ]
 
-# Dropped from the deployed scorer. They remain available for the fairness audit
-# and for the side-by-side "what if we had used them" CV comparison.
-EXCLUDED_FEATURES = ["personal_status", "foreign_worker"]
+# Withheld from the deployed score. credit_policy is the platform's own underwriting
+# flag. int_rate is the price that platform assigned from its risk grade. Both are
+# put back in a side comparison that is not allowed to choose the model.
+EXCLUDED_FEATURES = ["credit_policy", "int_rate"]
+
+POLICY_REASON = (
+    "credit_policy is Lending Club's own underwriting flag, and int_rate is the interest "
+    "rate the platform assigned from its risk grade. Both already contain a lender's "
+    "judgment. The deployed score does not see them, so the desk can explain the "
+    "application rather than repeat the old price. A side comparison puts the two fields "
+    "back at the winning hyperparameters and does not get to pick the model. FICO stays "
+    "in the score because it is known from the credit file at application time. A second "
+    "refit drops FICO so the report can show how much of the ranking the score itself carries."
+)
 
 REQUIRED_COLUMNS = [*FEATURE_COLUMNS, TARGET]
 
-# personal_status mixes sex and marital status, and the file has no "female single" code.
 FAIRNESS_REFERENCE = {
-    "sex": "male",
-    "age_band": "25 and over",
-    "foreign_worker": "no",
+    "credit_policy": "Meets policy",
+    "fico_band": "760 and over",
+    "purpose": "Debt consolidation",
 }
 
 GROUP_ORDER = {
-    "sex": ["female", "male"],
-    "age_band": ["Under 25", "25 and over"],
-    "foreign_worker": ["yes", "no"],
+    "credit_policy": ["Outside policy", "Meets policy"],
+    "fico_band": ["Under 680", "680–719", "720–759", "760 and over"],
+    "purpose": [
+        "Debt consolidation",
+        "Credit card payoff",
+        "All other",
+        "Home improvement",
+        "Major purchase",
+        "Small business",
+        "Education",
+    ],
 }
 
 ATTRIBUTE_LABELS = {
-    "sex": "Sex (derived from personal status)",
-    "age_band": "Age band",
-    "foreign_worker": "Foreign worker",
+    "credit_policy": "Existing credit policy",
+    "fico_band": "FICO band",
+    "purpose": "Loan purpose",
 }
 
 MODEL_ORDER = ("logistic_regression", "random_forest", "gradient_boosting")
@@ -132,191 +157,76 @@ DISPLAY_NAMES = {
 }
 
 FEATURE_LABELS = {
-    "checking_status": "Checking account status",
-    "duration": "Loan duration (months)",
-    "credit_history": "Credit history",
+    "credit_policy": "Lending Club credit policy",
     "purpose": "Loan purpose",
-    "credit_amount": "Credit amount (DM)",
-    "savings_status": "Savings account / bonds",
-    "employment": "Time with current employer",
-    "installment_commitment": "Installment rate (1–4 scale)",
-    "personal_status": "Personal status and sex",
-    "other_parties": "Other debtors or guarantors",
-    "residence_since": "Years at current residence",
-    "property_magnitude": "Property",
-    "age": "Age (years)",
-    "other_payment_plans": "Other installment plans",
-    "housing": "Housing",
-    "existing_credits": "Existing credits at this bank",
-    "job": "Job type",
-    "num_dependents": "Dependents",
-    "own_telephone": "Telephone in the applicant's name",
-    "foreign_worker": "Foreign worker",
+    "int_rate": "Interest rate",
+    "installment": "Monthly payment",
+    "log_annual_inc": "Annual income",
+    "dti": "Debt-to-income ratio",
+    "fico": "FICO score",
+    "days_with_cr_line": "Length of credit history",
+    "revol_bal": "Revolving balance",
+    "revol_util": "Revolving utilization",
+    "inq_last_6mths": "Credit inquiries in the last 6 months",
+    "delinq_2yrs": "Recent delinquencies",
+    "pub_rec": "Derogatory public records",
 }
 
 CATEGORY_OPTIONS: dict[str, list[str]] = {
-    "checking_status": ["no checking", "<0", "0<=X<200", ">=200"],
-    "credit_history": [
-        "no credits/all paid",
-        "all paid",
-        "existing paid",
-        "delayed previously",
-        "critical/other existing credit",
-    ],
     "purpose": [
-        "new car",
-        "used car",
-        "furniture/equipment",
-        "radio/tv",
-        "domestic appliance",
-        "repairs",
-        "education",
-        "retraining",
-        "business",
-        "other",
+        "debt_consolidation",
+        "credit_card",
+        "all_other",
+        "home_improvement",
+        "small_business",
+        "major_purchase",
+        "educational",
     ],
-    "savings_status": ["<100", "100<=X<500", "500<=X<1000", ">=1000", "no known savings"],
-    "employment": ["unemployed", "<1", "1<=X<4", "4<=X<7", ">=7"],
-    "personal_status": ["male div/sep", "female div/dep/mar", "male single", "male mar/wid"],
-    "other_parties": ["none", "co applicant", "guarantor"],
-    "property_magnitude": ["real estate", "life insurance", "car", "no known property"],
-    "other_payment_plans": ["bank", "stores", "none"],
-    "housing": ["rent", "own", "for free"],
-    "job": [
-        "unemp/unskilled non res",
-        "unskilled resident",
-        "skilled",
-        "high qualif/self emp/mgmt",
-    ],
-    "own_telephone": ["none", "yes"],
-    "foreign_worker": ["yes", "no"],
 }
 
 VALUE_LABELS: dict[str, dict[str, str]] = {
-    "checking_status": {
-        "no checking": "No checking account",
-        "<0": "Overdrawn (under 0 DM)",
-        "0<=X<200": "Balance from 0 to under 200 DM",
-        ">=200": "Balance of 200 DM or more",
-    },
-    "credit_history": {
-        "no credits/all paid": "No credits taken, or all paid duly",
-        "all paid": "All credits at this bank paid duly",
-        "existing paid": "Existing credits paid duly so far",
-        "delayed previously": "Past payment delays",
-        "critical/other existing credit": "Critical account, or credits at other banks",
-    },
     "purpose": {
-        "new car": "New car",
-        "used car": "Used car",
-        "furniture/equipment": "Furniture or equipment",
-        "radio/tv": "Radio or TV",
-        "domestic appliance": "Domestic appliance",
-        "repairs": "Repairs",
-        "education": "Education",
-        "retraining": "Retraining",
-        "business": "Business",
-        "other": "Other",
+        "debt_consolidation": "Debt consolidation",
+        "credit_card": "Credit card payoff",
+        "all_other": "All other",
+        "home_improvement": "Home improvement",
+        "small_business": "Small business",
+        "major_purchase": "Major purchase",
+        "educational": "Education",
     },
-    "savings_status": {
-        "<100": "Under 100 DM",
-        "100<=X<500": "100 to under 500 DM",
-        "500<=X<1000": "500 to under 1,000 DM",
-        ">=1000": "1,000 DM or more",
-        "no known savings": "No known savings account",
-    },
-    "employment": {
-        "unemployed": "Unemployed",
-        "<1": "Less than 1 year",
-        "1<=X<4": "1 to under 4 years",
-        "4<=X<7": "4 to under 7 years",
-        ">=7": "7 years or more",
-    },
-    "personal_status": {
-        "male div/sep": "Male, divorced or separated",
-        "female div/dep/mar": "Female, divorced, separated, or married",
-        "male single": "Male, single",
-        "male mar/wid": "Male, married or widowed",
-    },
-    "other_parties": {
-        "none": "None",
-        "co applicant": "Co-applicant",
-        "guarantor": "Guarantor",
-    },
-    "property_magnitude": {
-        "real estate": "Real estate",
-        "life insurance": "Life insurance or building-society savings",
-        "car": "Car or other property",
-        "no known property": "No known property",
-    },
-    "other_payment_plans": {
-        "bank": "Bank",
-        "stores": "Stores",
-        "none": "None",
-    },
-    "housing": {
-        "rent": "Rent",
-        "own": "Own",
-        "for free": "Rent-free",
-    },
-    "job": {
-        "unemp/unskilled non res": "Unemployed or unskilled, non-resident",
-        "unskilled resident": "Unskilled resident",
-        "skilled": "Skilled employee or official",
-        "high qualif/self emp/mgmt": "Management, self-employed, or highly qualified",
-    },
-    "own_telephone": {
-        "none": "No telephone in the applicant's name",
-        "yes": "Yes, registered in the applicant's name",
-    },
-    "foreign_worker": {
-        "yes": "Yes",
-        "no": "No",
+    "credit_policy": {
+        "0": "Outside policy",
+        "1": "Meets policy",
     },
 }
 
 # Illustrative files a reviewer can load. They are not real applicants.
+# Income is stored as the natural log, which is the column the model sees.
 PRESETS: dict[str, dict[str, object]] = {
     "Stronger file": {
-        # "No checking account" is a favorable code in this historical file, so the
-        # stronger example keeps it and improves savings, term, purpose, and support.
-        "checking_status": "no checking",
-        "duration": 12,
-        "credit_history": "critical/other existing credit",
-        "purpose": "used car",
-        "credit_amount": 1200,
-        "savings_status": ">=1000",
-        "employment": ">=7",
-        "installment_commitment": 1,
-        "other_parties": "guarantor",
-        "residence_since": 4,
-        "property_magnitude": "real estate",
-        "age": 40,
-        "other_payment_plans": "none",
-        "housing": "own",
-        "existing_credits": 2,
-        "job": "skilled",
-        "num_dependents": 1,
-        "own_telephone": "yes",
+        "purpose": "credit_card",
+        "installment": 220.0,
+        "log_annual_inc": math.log(95000),
+        "dti": 6.5,
+        "fico": 770,
+        "days_with_cr_line": 8000.0,
+        "revol_bal": 2500,
+        "revol_util": 12.0,
+        "inq_last_6mths": 0,
+        "delinq_2yrs": 0,
+        "pub_rec": 0,
     },
     "Higher-risk file": {
-        "checking_status": "<0",
-        "duration": 48,
-        "credit_history": "delayed previously",
-        "purpose": "education",
-        "credit_amount": 9000,
-        "savings_status": "<100",
-        "employment": "<1",
-        "installment_commitment": 4,
-        "other_parties": "none",
-        "residence_since": 1,
-        "property_magnitude": "no known property",
-        "age": 22,
-        "other_payment_plans": "bank",
-        "housing": "rent",
-        "existing_credits": 1,
-        "job": "unskilled resident",
-        "num_dependents": 1,
-        "own_telephone": "none",
+        "purpose": "small_business",
+        "installment": 720.0,
+        "log_annual_inc": math.log(34000),
+        "dti": 26.0,
+        "fico": 640,
+        "days_with_cr_line": 700.0,
+        "revol_bal": 28000,
+        "revol_util": 92.0,
+        "inq_last_6mths": 6,
+        "delinq_2yrs": 2,
+        "pub_rec": 1,
     },
 }

@@ -106,7 +106,11 @@ def _ratio(value: object, reference: object) -> float | None:
 
 
 def _outside_four_fifths(ratio: object) -> bool | None:
-    """US-style screening flag, not a legal conclusion for this German teaching set."""
+    """An 80% screening ratio. Not a legal conclusion, and not a protected-class finding.
+
+    This extract has no sex, age, or race fields. The ratio is reported for loan
+    purpose, FICO band, and the old credit-policy flag only.
+    """
 
     if ratio is None or pd.isna(ratio):
         return None
