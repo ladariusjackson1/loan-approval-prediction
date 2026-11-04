@@ -10,20 +10,20 @@ from loan_approval.preprocessing import build_model_pipeline, build_preprocessor
 
 
 def test_pipeline_imputes_scales_and_ignores_unseen_categories(synthetic_credit):
-    columns = ["duration", "credit_amount", "checking_status", "purpose"]
+    columns = ["fico", "installment", "purpose", "dti"]
     frame = synthetic_credit[columns].copy()
-    frame.loc[0, "duration"] = np.nan
-    frame.loc[1, "checking_status"] = np.nan
+    frame.loc[0, "fico"] = np.nan
+    frame.loc[1, "purpose"] = np.nan
     pipeline = build_model_pipeline(make_estimator("logistic_regression", seed=0), columns)
-    pipeline.fit(frame, (synthetic_credit["class"] == "good").astype(int))
+    pipeline.fit(frame, (synthetic_credit["not_fully_paid"] == 0).astype(int))
 
     row = pd.DataFrame(
         [
             {
-                "duration": np.nan,
-                "credit_amount": 2500,
-                "checking_status": "brand new status",
-                "purpose": np.nan,
+                "fico": np.nan,
+                "installment": 250.0,
+                "purpose": "brand new purpose",
+                "dti": np.nan,
             }
         ]
     )
@@ -36,7 +36,7 @@ def test_pipeline_imputes_scales_and_ignores_unseen_categories(synthetic_credit)
 
 
 def test_preprocessor_drops_columns_that_are_not_declared(synthetic_credit):
-    columns = ["age", "housing"]
+    columns = ["fico", "purpose"]
     preprocessor = build_preprocessor(columns)
     extra = synthetic_credit[columns].copy()
     extra["leak"] = 1

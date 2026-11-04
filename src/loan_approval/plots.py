@@ -29,7 +29,7 @@ LIGHT = "#D9E2EC"
 def plot_class_balance(n_good: int, n_bad: int, path: Path) -> None:
     total = max(n_good + n_bad, 1)
     fig, ax = plt.subplots(figsize=(6.2, 4.2))
-    labels = ["Good credit\n(approve)", "Bad credit\n(decline)"]
+    labels = ["Fully paid", "Not fully paid"]
     counts = [n_good, n_bad]
     bars = ax.bar(labels, counts, color=[TEAL, BRICK], width=0.62)
     for bar, count in zip(bars, counts, strict=True):
@@ -41,9 +41,9 @@ def plot_class_balance(n_good: int, n_bad: int, path: Path) -> None:
             va="bottom",
             color=NAVY,
         )
-    ax.set_ylabel("Applicants")
-    ax.set_ylim(0, max(counts) * 1.25)
-    ax.set_title("Seven in ten historical files were good credits")
+    ax.set_ylabel("Loans")
+    ax.set_ylim(0, max(counts) * 1.28)
+    ax.set_title(f"{n_good / total:.0%} of loans in this sample were fully paid")
     _save(fig, path)
 
 
@@ -132,7 +132,7 @@ def plot_confusion(matrix: np.ndarray | list[list[int]], path: Path) -> None:
         cmap="Blues",
         cbar=False,
         xticklabels=["Decline", "Approve"],
-        yticklabels=["Bad credit", "Good credit"],
+        yticklabels=["Not fully paid", "Fully paid"],
         ax=ax,
         linewidths=1,
         linecolor="white",
@@ -159,18 +159,18 @@ def plot_threshold_cost(
         color=BRICK,
         linestyle="--",
         linewidth=1.2,
-        label=f"Approve everyone ({baselines['approve_all']:.2f})",
+        label=f"Approve everyone (${baselines['approve_all']:,.0f})",
     )
     ax.axhline(
         baselines["decline_all"],
         color=TEAL,
         linestyle="--",
         linewidth=1.2,
-        label=f"Decline everyone ({baselines['decline_all']:.2f})",
+        label=f"Decline everyone (${baselines['decline_all']:,.0f})",
     )
-    ax.set_xlabel("Approve if P(good credit) is at least")
-    ax.set_ylabel("Average cost per applicant")
-    ax.set_title("Training out-of-fold cost under the 5:1 Statlog matrix")
+    ax.set_xlabel("Approve if the model score is at least")
+    ax.set_ylabel("Planning cost per application ($)")
+    ax.set_title("Training out-of-fold planning cost")
     ax.legend(frameon=False, fontsize=8)
     _save(fig, path)
 
@@ -198,7 +198,7 @@ def plot_coefficients(frame: pd.DataFrame, path: Path, *, top_n: int = 12) -> No
     ax.barh(labels, subset["coefficient"], color=colors)
     ax.axvline(0, color=SLATE, linewidth=1)
     ax.tick_params(axis="y", labelsize=8)
-    ax.set_xlabel("Log-odds of good credit (standardized inputs)")
+    ax.set_xlabel("Log-odds of a fully paid loan (standardized inputs)")
     ax.set_title("Direction of effect in the regularized logistic model")
     _save(fig, path)
 
@@ -220,7 +220,7 @@ def plot_fairness(frame: pd.DataFrame, path: Path) -> None:
     fig, axes = plt.subplots(
         1,
         len(attributes),
-        figsize=(11.4, 4.4),
+        figsize=(4.6 * len(attributes), 5.2),
         sharey=True,
         squeeze=False,
     )
@@ -237,7 +237,7 @@ def plot_fairness(frame: pd.DataFrame, path: Path) -> None:
             block["base_rate"].astype(float),
             width,
             color=LIGHT,
-            label="Actual good-credit rate",
+            label="Fully paid rate",
         )
         axis.bar(
             x + width / 2,
@@ -250,13 +250,13 @@ def plot_fairness(frame: pd.DataFrame, path: Path) -> None:
             f"{group}\n(n={int(n)})" for group, n in zip(block["group"], block["n"], strict=True)
         ]
         axis.set_xticks(x)
-        axis.set_xticklabels(labels)
+        axis.set_xticklabels(labels, rotation=25, ha="right")
         axis.set_ylim(0, 1.05)
         axis.set_title(ATTRIBUTE_LABELS[attribute], fontsize=11)
         if axis is axis_list[0]:
             axis.set_ylabel("Rate")
             axis.legend(frameon=False, fontsize=8)
-    fig.suptitle("Out-of-fold approval versus the historical good-credit rate", fontsize=13)
+    fig.suptitle("Out-of-fold approval versus the share of loans fully paid", fontsize=13)
     _save(fig, path)
 
 
@@ -284,7 +284,7 @@ def plot_calibration(
         ax.plot(mean_predicted, fraction, marker="o", color=NAVY, label="Deployed model")
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1.02)
-    ax.set_xlabel("Predicted P(good credit)")
+    ax.set_xlabel("Predicted score for a fully paid loan")
     ax.set_ylabel("Observed frequency")
     ax.set_title("Holdout calibration of the deployed model")
     ax.legend(frameon=False, loc="upper left")
@@ -305,8 +305,8 @@ def contribution_figure(records: list[dict[str, object]], *, top_n: int = 8) -> 
     colors = [TEAL if delta >= 0 else BRICK for delta in deltas]
     ax.barh(labels, deltas, color=colors)
     ax.axvline(0, color=SLATE, linewidth=1)
-    ax.set_xlabel("Change in P(good credit) versus a typical file")
-    ax.set_title("What moves this application")
+    ax.set_xlabel("Change in the model score versus a typical file")
+    ax.set_title("What pushed this application")
     fig.tight_layout()
     return fig
 

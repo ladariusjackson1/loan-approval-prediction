@@ -1,0 +1,21 @@
+# Read by Streamlit Community Cloud and by `streamlit run streamlit_app.py`.
+# The process working directory is the repository root.
+
+[theme]
+base = "light"
+primaryColor = "#0F6E6E"
+backgroundColor = "#F7F5F2"
+secondaryBackgroundColor = "#E5F0F0"
+textColor = "#1B2838"
+font = "sans serif"
+
+[server]
+headless = true
+runOnSave = false
+fileWatcherType = "none"
+
+[browser]
+gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"

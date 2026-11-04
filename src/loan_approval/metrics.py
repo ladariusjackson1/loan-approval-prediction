@@ -17,6 +17,12 @@ from sklearn.metrics import (
 from loan_approval.config import FN_COST, FP_COST
 
 
+def dollars(value: float) -> str:
+    """Format a planning-cost figure the README and the tests both look for."""
+
+    return f"{float(value):,.2f}"
+
+
 def expected_cost(
     y_true: np.ndarray | pd.Series,
     y_pred: np.ndarray | pd.Series,
@@ -24,7 +30,7 @@ def expected_cost(
     fp_cost: float = FP_COST,
     fn_cost: float = FN_COST,
 ) -> float:
-    """Total Statlog cost. False approvals (bad credits marked good) use ``fp_cost``."""
+    """Total planning cost. False approvals (not-fully-paid loans marked paid) use ``fp_cost``."""
 
     actual = np.asarray(y_true).astype(int)
     predicted = np.asarray(y_pred).astype(int)
@@ -45,8 +51,7 @@ def choose_threshold(
 ) -> tuple[float, np.ndarray, np.ndarray]:
     """Pick the cutoff that minimizes average cost on out-of-fold scores.
 
-    Ties break toward the higher cutoff. Under a 5:1 loss, a tie should not
-    become a looser lending rule.
+    Ties break toward the higher cutoff, so a tie does not become a looser lending rule.
     """
 
     actual = np.asarray(y_true).astype(int)
@@ -85,6 +90,44 @@ def policy_baselines(
     }
 
 
+def money_saved(
+    holdout_metrics: dict[str, object],
+    baselines: dict[str, float],
+) -> dict[str, float | str]:
+    """Dollars versus the two rules that ignore the model.
+
+    A negative save means the scored cutoff costs more than that rule on this book.
+    The better naive rule is the cheaper of approve-everyone and decline-everyone.
+    """
+
+    per_applicant = float(holdout_metrics["cost_per_applicant"])
+    n = int(holdout_metrics["n"])
+    approve_all = float(baselines["approve_all"])
+    decline_all = float(baselines["decline_all"])
+    if decline_all < approve_all:
+        better_name = "decline_all"
+        better = decline_all
+    elif approve_all < decline_all:
+        better_name = "approve_all"
+        better = approve_all
+    else:
+        better_name = "tie"
+        better = approve_all
+    saved_per = better - per_applicant
+    return {
+        "better_naive_rule": better_name,
+        "better_naive_cost_per_applicant": better,
+        "model_cost_per_applicant": per_applicant,
+        "saved_per_applicant_vs_better_naive": saved_per,
+        "saved_total_vs_better_naive": saved_per * n,
+        "saved_total_vs_approve_all": (approve_all - per_applicant) * n,
+        "saved_total_vs_decline_all": (decline_all - per_applicant) * n,
+        "approve_all_cost_total": approve_all * n,
+        "decline_all_cost_total": decline_all * n,
+        "model_cost_total": per_applicant * n,
+    }
+
+
 def classification_metrics(
     y_true: np.ndarray | pd.Series,
     proba: np.ndarray | pd.Series,
@@ -95,10 +138,10 @@ def classification_metrics(
 ) -> dict[str, object]:
     """ROC-AUC and F1 plus the confusion matrix at a frozen threshold.
 
-    F1 treats "good credit / approve" as the positive class, which is what the
-    product decision is. Because that class is 70% of the file, F1 can look
-    strong while the cost matrix still prefers a strict cutoff. Both numbers
-    are reported for that reason.
+    F1 treats "fully paid / approve" as the positive class, which is the product
+    decision. That class is the majority of this file, so F1 can look strong
+    while the dollar weights still prefer a strict cutoff. Both numbers are
+    reported for that reason.
     """
 
     actual = np.asarray(y_true).astype(int)

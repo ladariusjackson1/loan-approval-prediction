@@ -13,52 +13,34 @@ import pytest
 
 @pytest.fixture
 def synthetic_credit() -> pd.DataFrame:
-    """Small table with the real schema and both outcomes."""
+    """Small table with the Lending Club schema and both repayment outcomes."""
 
     rng = np.random.default_rng(0)
     n = 80
+    purposes = np.array(
+        ["debt_consolidation", "credit_card", "all_other", "small_business", "educational"]
+    )
     frame = pd.DataFrame(
         {
-            "checking_status": rng.choice(["<0", "0<=X<200", ">=200", "no checking"], n),
-            "duration": rng.integers(6, 48, n),
-            "credit_history": rng.choice(
-                ["existing paid", "critical/other existing credit", "delayed previously"],
-                n,
-            ),
-            "purpose": rng.choice(["radio/tv", "new car", "education", "business"], n),
-            "credit_amount": rng.integers(500, 8000, n),
-            "savings_status": rng.choice(["<100", ">=1000", "no known savings"], n),
-            "employment": rng.choice(["<1", "1<=X<4", ">=7", "unemployed"], n),
-            "installment_commitment": rng.integers(1, 5, n),
-            "personal_status": rng.choice(
-                ["male single", "female div/dep/mar", "male mar/wid", "male div/sep"],
-                n,
-            ),
-            "other_parties": rng.choice(["none", "guarantor", "co applicant"], n),
-            "residence_since": rng.integers(1, 5, n),
-            "property_magnitude": rng.choice(
-                ["real estate", "car", "no known property", "life insurance"],
-                n,
-            ),
-            "age": rng.integers(19, 70, n),
-            "other_payment_plans": rng.choice(["none", "bank", "stores"], n),
-            "housing": rng.choice(["own", "rent", "for free"], n),
-            "existing_credits": rng.integers(1, 4, n),
-            "job": rng.choice(
-                ["skilled", "unskilled resident", "high qualif/self emp/mgmt"],
-                n,
-            ),
-            "num_dependents": rng.integers(1, 3, n),
-            "own_telephone": rng.choice(["none", "yes"], n),
-            "foreign_worker": rng.choice(["yes", "no"], n),
+            "credit_policy": rng.integers(0, 2, n).astype(float),
+            "purpose": rng.choice(purposes, n),
+            "int_rate": rng.uniform(0.07, 0.2, n),
+            "installment": rng.uniform(80, 700, n),
+            "log_annual_inc": np.log(rng.uniform(25000, 120000, n)),
+            "dti": rng.uniform(2, 28, n),
+            "fico": rng.integers(630, 790, n).astype(float),
+            "days_with_cr_line": rng.uniform(400, 9000, n),
+            "revol_bal": rng.integers(0, 40000, n).astype(float),
+            "revol_util": rng.uniform(0, 100, n),
+            "inq_last_6mths": rng.integers(0, 8, n).astype(float),
+            "delinq_2yrs": rng.integers(0, 3, n).astype(float),
+            "pub_rec": rng.integers(0, 2, n).astype(float),
         }
     )
-    signal = (
-        frame["checking_status"].eq("no checking").astype(int)
-        + (frame["age"] > 30).astype(int)
-        - (frame["credit_amount"] > 5000).astype(int)
-    )
-    frame["class"] = np.where(signal.to_numpy() > 0, "good", "bad")
-    frame.loc[0, "class"] = "good"
-    frame.loc[1, "class"] = "bad"
+    frame["not_fully_paid"] = 0
+    frame.loc[frame.index % 5 == 0, "not_fully_paid"] = 1
+    frame.loc[frame["not_fully_paid"] == 1, "fico"] = 640
+    frame.loc[frame["not_fully_paid"] == 0, "fico"] = 740
+    frame.loc[0, "not_fully_paid"] = 0
+    frame.loc[1, "not_fully_paid"] = 1
     return frame

@@ -1,3 +1,3 @@
-"""Educational loan-approval scoring on the UCI German Credit dataset."""
+"""Educational loan-approval scoring on a public Lending Club sample."""
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"

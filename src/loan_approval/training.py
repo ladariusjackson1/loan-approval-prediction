@@ -19,6 +19,8 @@ from sklearn.model_selection import (
 )
 
 from loan_approval.config import (
+    ABLATION_FEATURE,
+    COST_SOURCE,
     CV_FOLDS,
     DATASET,
     DISPLAY_NAMES,
@@ -28,6 +30,7 @@ from loan_approval.config import (
     FP_COST,
     MODEL_ORDER,
     N_ITER,
+    POLICY_REASON,
     RANDOM_STATE,
     REVIEW_BAND,
     TEST_SIZE,
@@ -39,6 +42,7 @@ from loan_approval.inspection import coefficient_frame, permutation_frame
 from loan_approval.metrics import (
     choose_threshold,
     classification_metrics,
+    money_saved,
     policy_baselines,
 )
 from loan_approval.models import make_estimator, search_space
@@ -92,7 +96,7 @@ def run_experiment(df: pd.DataFrame, config: ExperimentConfig | None = None) -> 
     settings = config or ExperimentConfig()
     features, target, sensitive = modeling_matrices(df, excluded=list(settings.excluded_features))
     if target.nunique() < 2:
-        raise DatasetError("Both good and bad credit outcomes are required to train.")
+        raise DatasetError("Both fully paid and not fully paid outcomes are required to train.")
 
     (
         x_train,
@@ -227,8 +231,10 @@ def run_experiment(df: pd.DataFrame, config: ExperimentConfig | None = None) -> 
         n_jobs=settings.n_jobs,
     )
     coefficients = coefficient_frame(fitted["logistic_regression"])
-    age_cv = _refit_cv_auc(
-        x_train.drop(columns=["age"]),
+    if ABLATION_FEATURE not in x_train.columns:
+        raise DatasetError(f"Cannot ablate missing feature '{ABLATION_FEATURE}'.")
+    ablation_cv = _refit_cv_auc(
+        x_train.drop(columns=[ABLATION_FEATURE]),
         y_train,
         winner_name=winner_name,
         winner_params=dict(winner_row["best_params"]),
@@ -237,8 +243,8 @@ def run_experiment(df: pd.DataFrame, config: ExperimentConfig | None = None) -> 
         n_jobs=settings.n_jobs,
         baseline_auc=float(winner_row["cv_roc_auc_mean"]),
         note=(
-            "Same model family and hyperparameters, with age removed from an otherwise "
-            "unchanged policy feature set. Not used to choose the deployed model."
+            f"Same model family and hyperparameters, with {ABLATION_FEATURE} removed from an "
+            "otherwise unchanged policy feature set. Not used to choose the deployed model."
         ),
     )
     sensitive_cv = _sensitive_feature_lift(
@@ -267,7 +273,7 @@ def run_experiment(df: pd.DataFrame, config: ExperimentConfig | None = None) -> 
         importance=importance,
         coefficients=coefficients,
         sensitive_cv=sensitive_cv,
-        age_cv=age_cv,
+        ablation_cv=ablation_cv,
         n_train=int(len(x_train)),
         n_test=int(len(x_test)),
         positive_rate=float(target.mean()),
@@ -386,8 +392,9 @@ def _sensitive_feature_lift(
     n_jobs: int,
     policy_auc: float,
 ) -> dict[str, object]:
-    """Same winning hyperparameters, but with the two dropped fields put back."""
+    """Same winning hyperparameters, but with the withheld fields put back."""
 
+    restored = ", ".join(EXCLUDED_FEATURES)
     comparison = _refit_cv_auc(
         train_frame[FEATURE_COLUMNS],
         y_train,
@@ -399,7 +406,7 @@ def _sensitive_feature_lift(
         baseline_auc=policy_auc,
         note=(
             "Same model family and hyperparameters as the deployed scorer, refit in "
-            "cross-validation with personal_status and foreign_worker added back. "
+            f"cross-validation with {restored} added back. "
             "This is not a second search, and it is not used to pick the deployed model."
         ),
     )
@@ -458,7 +465,7 @@ def _model_card(
     importance: pd.DataFrame,
     coefficients: pd.DataFrame,
     sensitive_cv: dict[str, object],
-    age_cv: dict[str, object],
+    ablation_cv: dict[str, object],
     n_train: int,
     n_test: int,
     positive_rate: float,
@@ -470,22 +477,15 @@ def _model_card(
         "project": "Loan approval prediction",
         "author": "Ladarius Jackson",
         "dataset": DATASET,
-        "positive_class": "good credit, coded as 1, decision = approve",
+        "positive_class": "fully paid, coded as 1, decision = approve",
         "positive_rate": positive_rate,
         "policy": {
             "excluded_features": list(settings.excluded_features),
-            "reason": (
-                "personal_status mixes sex and marital status, and foreign_worker is a "
-                "sensitive attribute. Both are withheld from the deployed score and kept "
-                "for the fairness audit. Age stays in the model because it is a standard "
-                "credit-risk field, and it is still audited by age band."
-            ),
+            "reason": POLICY_REASON,
+            "ablation_feature": ABLATION_FEATURE,
             "fp_cost": settings.fp_cost,
             "fn_cost": settings.fn_cost,
-            "cost_source": (
-                "UCI Statlog German Credit cost matrix: classifying a bad credit as good "
-                "costs 5, classifying a good credit as bad costs 1."
-            ),
+            "cost_source": COST_SOURCE,
             "review_band": REVIEW_BAND,
         },
         "split": {
@@ -509,6 +509,7 @@ def _model_card(
             "display_name": DISPLAY_NAMES[winner_name],
         },
         "holdout": holdout_metrics,
+        "money": money_saved(holdout_metrics, holdout_baselines),
         "oof_baselines": oof_baselines,
         "holdout_baselines": holdout_baselines,
         "threshold_curve": {
@@ -518,7 +519,7 @@ def _model_card(
         "fairness_oof": fairness_oof,
         "fairness_holdout": fairness_holdout,
         "sensitive_feature_comparison": sensitive_cv,
-        "age_feature_comparison": age_cv,
+        "ablation_feature_comparison": ablation_cv,
         "permutation_importance": importance,
         "logistic_coefficients": coefficients,
         "reference_profile": reference,
