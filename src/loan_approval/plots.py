@@ -98,7 +98,12 @@ def plot_model_comparison(rows: list[dict[str, object]], path: Path, *, winner: 
 
 def plot_roc_curves(curves: list[dict[str, object]], path: Path) -> None:
     fig, ax = plt.subplots(figsize=(6.4, 5.4))
-    colors = {"logistic_regression": NAVY, "random_forest": TEAL, "gradient_boosting": GOLD}
+    colors = {
+        "logistic_regression": NAVY,
+        "hist_gradient_boosting": GOLD,
+        "random_forest": TEAL,
+        "gradient_boosting": GOLD,
+    }
     for curve in curves:
         name = str(curve["model"])
         y_true = np.asarray(curve["y_true"]).astype(int)
@@ -260,8 +265,50 @@ def plot_fairness(frame: pd.DataFrame, path: Path) -> None:
     _save(fig, path)
 
 
+def plot_bootstrap_intervals(rows: list[dict[str, object]], path: Path, *, winner: str) -> None:
+    """Holdout ROC-AUC with the percentile bootstrap interval used in the report."""
+
+    tuned = [_row(rows, name, "tuned") for name in MODEL_ORDER]
+    fig, ax = plt.subplots(figsize=(7.2, 4.6))
+    positions = np.arange(len(tuned))
+    estimates = [float(row["holdout_roc_auc"]) for row in tuned]
+    low = []
+    high = []
+    for row, estimate in zip(tuned, estimates, strict=True):
+        ci_low = row.get("holdout_roc_auc_ci_low")
+        ci_high = row.get("holdout_roc_auc_ci_high")
+        if ci_low is None or ci_high is None:
+            low.append(0.0)
+            high.append(0.0)
+        else:
+            low.append(estimate - float(ci_low))
+            high.append(float(ci_high) - estimate)
+    colors = [TEAL if str(row["model"]) == winner else NAVY for row in tuned]
+    ax.bar(
+        positions,
+        estimates,
+        color=colors,
+        yerr=np.vstack([low, high]),
+        capsize=4,
+        width=0.62,
+    )
+    ax.set_xticks(positions)
+    ax.set_xticklabels([DISPLAY_NAMES[str(row["model"])] for row in tuned])
+    floor = min(estimates) - 0.08
+    ax.set_ylim(max(0.0, floor), 1.02)
+    ax.set_ylabel("Holdout ROC-AUC")
+    ax.set_title("Holdout ROC-AUC with a 95% bootstrap interval")
+    for position, estimate in zip(positions, estimates, strict=True):
+        ax.text(position, min(estimate + 0.02, 0.98), f"{estimate:.3f}", ha="center", color=NAVY)
+    _save(fig, path)
+
+
 def plot_calibration(
-    y_true: np.ndarray | pd.Series, proba: np.ndarray | pd.Series, path: Path
+    y_true: np.ndarray | pd.Series,
+    proba: np.ndarray | pd.Series,
+    path: Path,
+    *,
+    uncalibrated: np.ndarray | pd.Series | None = None,
 ) -> None:
     fig, ax = plt.subplots(figsize=(6.2, 5.2))
     actual = np.asarray(y_true).astype(int)
@@ -272,16 +319,21 @@ def plot_calibration(
             0.5, 0.55, "Not enough holdout variation\nto draw a reliability curve.", ha="center"
         )
     else:
-        bins = max(3, min(8, len(actual) // 5))
-        try:
-            fraction, mean_predicted = calibration_curve(
-                actual, scores, n_bins=bins, strategy="quantile"
+        _draw_reliability(
+            ax,
+            actual,
+            scores,
+            color=NAVY,
+            label="After isotonic calibration" if uncalibrated is not None else "Deployed model",
+        )
+        if uncalibrated is not None:
+            _draw_reliability(
+                ax,
+                actual,
+                np.asarray(uncalibrated, dtype=float),
+                color=GOLD,
+                label="Before calibration",
             )
-        except ValueError:
-            fraction, mean_predicted = calibration_curve(
-                actual, scores, n_bins=min(5, bins), strategy="uniform"
-            )
-        ax.plot(mean_predicted, fraction, marker="o", color=NAVY, label="Deployed model")
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1.02)
     ax.set_xlabel("Predicted score for a fully paid loan")
@@ -289,6 +341,21 @@ def plot_calibration(
     ax.set_title("Holdout calibration of the deployed model")
     ax.legend(frameon=False, loc="upper left")
     _save(fig, path)
+
+
+def _draw_reliability(
+    ax: plt.Axes, actual: np.ndarray, scores: np.ndarray, *, color: str, label: str
+) -> None:
+    bins = max(3, min(8, len(actual) // 5))
+    try:
+        fraction, mean_predicted = calibration_curve(
+            actual, scores, n_bins=bins, strategy="quantile"
+        )
+    except ValueError:
+        fraction, mean_predicted = calibration_curve(
+            actual, scores, n_bins=min(5, bins), strategy="uniform"
+        )
+    ax.plot(mean_predicted, fraction, marker="o", color=color, label=label)
 
 
 def contribution_figure(records: list[dict[str, object]], *, top_n: int = 8) -> plt.Figure:
@@ -305,7 +372,7 @@ def contribution_figure(records: list[dict[str, object]], *, top_n: int = 8) -> 
     colors = [TEAL if delta >= 0 else BRICK for delta in deltas]
     ax.barh(labels, deltas, color=colors)
     ax.axvline(0, color=SLATE, linewidth=1)
-    ax.set_xlabel("Change in the model score versus a typical file")
+    ax.set_xlabel("Change in the ranking score versus a typical file")
     ax.set_title("What pushed this application")
     fig.tight_layout()
     return fig

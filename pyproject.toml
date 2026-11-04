@@ -1,6 +1,6 @@
 [project]
 name = "loan-approval"
-version = "2.0.0"
+version = "3.0.0"
 description = "Educational loan-approval scorer on a public-domain Lending Club sample."
 requires-python = ">=3.11"
 readme = "README.md"
@@ -9,7 +9,7 @@ readme = "README.md"
 where = ["src"]
 
 [tool.pytest.ini_options]
-addopts = "--cov=loan_approval --cov-report=term-missing --cov-fail-under=85"
+addopts = "--cov=loan_approval --cov-report=term-missing --cov-fail-under=95"
 testpaths = ["tests"]
 pythonpath = ["src"]
 
@@ -34,5 +34,6 @@ known-first-party = ["loan_approval"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/loan_approval/plots.py" = ["E402"]
+"src/loan_approval/model_card_doc.py" = ["E501"]
 "app/streamlit_app.py" = ["E402"]
 "streamlit_app.py" = ["E402"]

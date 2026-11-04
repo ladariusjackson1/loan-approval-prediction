@@ -11,14 +11,18 @@ from loan_approval.config import (
     DATA_PATH,
     DISPLAY_NAMES,
     FIGURE_DIR,
+    MODEL_CARD_MD_PATH,
     MODEL_CARD_PATH,
     MODEL_PATH,
+    N_BOOTSTRAP,
     N_ITER,
     RANDOM_STATE,
     REVIEW_BAND,
 )
 from loan_approval.data import load_loan_data
+from loan_approval.model_card_doc import write_model_card
 from loan_approval.plots import (
+    plot_bootstrap_intervals,
     plot_calibration,
     plot_class_balance,
     plot_coefficients,
@@ -41,7 +45,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--card-path", type=Path, default=MODEL_CARD_PATH)
     parser.add_argument("--figure-dir", type=Path, default=FIGURE_DIR)
     parser.add_argument("--n-iter", type=int, default=N_ITER)
+    parser.add_argument("--bootstrap", type=int, default=N_BOOTSTRAP)
     parser.add_argument("--cv", type=int, default=CV_FOLDS)
+    parser.add_argument("--card-md", type=Path, default=None)
     parser.add_argument("--seed", type=int, default=RANDOM_STATE)
     parser.add_argument("--jobs", type=int, default=-1)
     parser.add_argument(
@@ -61,6 +67,7 @@ def main(argv: list[str] | None = None) -> ExperimentResult:
             seed=args.seed,
             cv_folds=args.cv,
             n_iter=args.n_iter,
+            n_bootstrap=args.bootstrap,
             n_jobs=args.jobs,
         ),
     )
@@ -77,8 +84,19 @@ def main(argv: list[str] | None = None) -> ExperimentResult:
             "feature_columns": result.feature_columns,
             "model_name": result.model_name,
             "review_band": REVIEW_BAND,
+            "calibrator": result.calibrator,
+            "holdout_y": result.y_holdout,
+            "holdout_proba": result.proba_holdout,
         },
     )
+    card_md = args.card_md
+    if card_md is None:
+        card_md = (
+            MODEL_CARD_MD_PATH
+            if args.card_path == MODEL_CARD_PATH
+            else args.card_path.parent / "MODEL_CARD.md"
+        )
+    write_model_card(card, card_md)
     _save_figures(result, args.figure_dir)
     holdout = card["holdout"]
     money = card["money"]
@@ -92,6 +110,7 @@ def main(argv: list[str] | None = None) -> ExperimentResult:
         f"threshold {result.threshold:.2f}"
     )
     print(f"Model card: {args.card_path}")
+    print(f"Model card markdown: {card_md}")
     print(f"Pipeline: {args.model_path}")
     print(f"Figures: {args.figure_dir}")
     return result
@@ -117,7 +136,17 @@ def _save_figures(result: ExperimentResult, directory: Path) -> None:
     plot_importance(result.importance, directory / "feature_importance.png")
     plot_coefficients(result.coefficients, directory / "logistic_coefficients.png")
     plot_fairness(result.fairness_oof, directory / "fairness.png")
-    plot_calibration(result.y_holdout, result.proba_holdout, directory / "calibration.png")
+    plot_calibration(
+        result.y_holdout,
+        result.proba_holdout,
+        directory / "calibration.png",
+        uncalibrated=result.proba_holdout_raw,
+    )
+    plot_bootstrap_intervals(
+        result.comparison_rows,
+        directory / "bootstrap_intervals.png",
+        winner=result.model_name,
+    )
 
 
 if __name__ == "__main__":

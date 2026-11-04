@@ -9,6 +9,7 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 DATA_PATH = PACKAGE_ROOT / "data" / "lending_club_sample.csv"
 MODEL_PATH = PACKAGE_ROOT / "models" / "credit_pipeline.joblib"
 MODEL_CARD_PATH = PACKAGE_ROOT / "models" / "model_card.json"
+MODEL_CARD_MD_PATH = PACKAGE_ROOT / "MODEL_CARD.md"
 FIGURE_DIR = PACKAGE_ROOT / "reports" / "figures"
 
 OPENML_DATA_ID = 43729
@@ -67,6 +68,7 @@ RANDOM_STATE = 42
 TEST_SIZE = 0.20
 CV_FOLDS = 5
 N_ITER = 16
+N_BOOTSTRAP = 1000
 REVIEW_BAND = 0.05
 
 # Removed in a side refit. It stays in the deployed score; the refit only measures it.
@@ -148,12 +150,14 @@ ATTRIBUTE_LABELS = {
     "purpose": "Loan purpose",
 }
 
-MODEL_ORDER = ("logistic_regression", "random_forest", "gradient_boosting")
+# Simpler models come first. A tie that the bootstrap interval does not separate
+# deploys the earlier name. Histogram gradient boosting is scikit-learn's
+# HistGradientBoostingClassifier: same family as LightGBM, no extra wheel.
+MODEL_ORDER = ("logistic_regression", "hist_gradient_boosting")
 
 DISPLAY_NAMES = {
     "logistic_regression": "Logistic regression",
-    "random_forest": "Random forest",
-    "gradient_boosting": "Gradient boosting",
+    "hist_gradient_boosting": "Histogram gradient boosting",
 }
 
 FEATURE_LABELS = {
