@@ -163,7 +163,14 @@ def test_repo_is_ready_for_streamlit_community_cloud():
     assert "app.streamlit_app" in entry
     assert "streamlit run streamlit_app.py" in entry
     readme = (root / "README.md").read_text(encoding="utf-8")
+    lowered = readme.lower()
+    assert "live demo" not in lowered
+    assert "live%20demo" not in lowered
     assert "https://loan-approval-prediction.streamlit.app" in readme
+    assert "sign-in" in lowered
+    assert "access is pending" in lowered
+    assert "not publicly open" in lowered
+    assert "streamlit run streamlit_app.py" in readme
     assert "docs/demo.gif" in readme
     assert (root / "docs" / "demo.gif").is_file()
     assert (root / "MODEL_CARD.md").is_file()

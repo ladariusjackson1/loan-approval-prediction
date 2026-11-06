@@ -1,7 +1,5 @@
 # Loan approval prediction
 
-[![Live demo](https://img.shields.io/badge/Live%20demo-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://loan-approval-prediction.streamlit.app)
-
 Educational loan-decision project by **Ladarius Jackson**. A scikit-learn pipeline scores a public Lending Club sample, compares logistic regression with histogram gradient boosting under cross-validation, and turns a stated dollar loss into an approve / decline cutoff. The Streamlit desk scores one application, explains a decline in plain English, simulates the holdout book at a cutoff you pick, and scores a CSV.
 
 This is a teaching model on 9,578 historical loans. It does not issue a credit offer, a denial, or a compliance determination. The dollar figures below are a planning scenario. The file has no charge-off balance, so they are not a lender's profit and loss. The full card is [MODEL_CARD.md](MODEL_CARD.md).
@@ -162,6 +160,8 @@ The model never sees the old policy flag, and it still approves 2.9% of outside-
 Small business is the purpose with the lowest fully-paid rate in the training book (71.9%) and the lowest approval rate (2.2%). Credit-card payoff and major purchase are approved well above the debt-consolidation reference. Those purpose gaps are large enough to show a reviewer, and too entangled with FICO and loan size to treat as a pure purpose effect.
 
 ## Credit desk
+
+The hosted address [loan-approval-prediction.streamlit.app](https://loan-approval-prediction.streamlit.app) is not publicly open. An unauthenticated visit is redirected to Streamlit sign-in. Access is pending. Run the desk on your machine. The GIF below is a recording of that local run.
 
 ```bash
 streamlit run streamlit_app.py
