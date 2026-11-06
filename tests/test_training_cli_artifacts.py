@@ -28,7 +28,7 @@ from loan_approval.training import ExperimentConfig, _select_winner, run_experim
 def test_winner_tie_breaks_toward_the_simpler_model():
     rows = [
         {
-            "model": "gradient_boosting",
+            "model": "hist_gradient_boosting",
             "stage": "tuned",
             "cv_roc_auc_mean": 0.8,
             "cv_roc_auc_std": 0.01,
@@ -40,7 +40,7 @@ def test_winner_tie_breaks_toward_the_simpler_model():
             "cv_roc_auc_std": 0.01,
         },
         {
-            "model": "random_forest",
+            "model": "logistic_regression",
             "stage": "default",
             "cv_roc_auc_mean": 0.99,
             "cv_roc_auc_std": 0.0,
@@ -78,6 +78,10 @@ def test_cli_trains_a_toy_file_and_writes_figures(tmp_path, synthetic_credit):
             "1",
             "--seed",
             "0",
+            "--bootstrap",
+            "200",
+            "--card-md",
+            str(tmp_path / "MODEL_CARD.md"),
         ]
     )
     bundle = load_bundle(tmp_path / "model.joblib")
@@ -94,7 +98,9 @@ def test_cli_trains_a_toy_file_and_writes_figures(tmp_path, synthetic_credit):
         "logistic_coefficients.png",
         "fairness.png",
         "calibration.png",
+        "bootstrap_intervals.png",
     }
+    assert (tmp_path / "MODEL_CARD.md").is_file()
     payload = {column: synthetic_credit.iloc[0][column] for column in bundle["feature_columns"]}
     explained = explain_application(
         bundle["pipeline"],
@@ -160,6 +166,7 @@ def test_repo_is_ready_for_streamlit_community_cloud():
     assert "https://loan-approval-prediction.streamlit.app" in readme
     assert "docs/demo.gif" in readme
     assert (root / "docs" / "demo.gif").is_file()
+    assert (root / "MODEL_CARD.md").is_file()
 
 
 def test_shipped_model_matches_the_readme_and_explains_a_real_row():
@@ -179,7 +186,16 @@ def test_shipped_model_matches_the_readme_and_explains_a_real_row():
     assert dollars(float(holdout["cost_per_applicant"])) in readme
     assert dollars(float(money["saved_total_vs_better_naive"])) in readme
     assert dollars(float(money["model_cost_total"])) in readme
+    assert f"{holdout['brier']:.3f}" in readme
+    low, high = card["winner"]["holdout_roc_auc_ci"]
+    assert f"{float(low):.3f}" in readme
+    assert f"{float(high):.3f}" in readme
+    assert f"{float(card['calibration']['holdout_brier_uncalibrated']):.3f}" in readme
+    assert f"{float(card['calibration']['holdout_brier_base_rate']):.3f}" in readme
+    card_md = (root / "MODEL_CARD.md").read_text(encoding="utf-8")
+    assert f"{holdout['roc_auc']:.3f}" in card_md
     assert card["winner"]["display_name"] in readme
+    assert card["winner"]["display_name"] in card_md
     assert "43729" in readme
     assert "CC0" in readme
     assert card["data_sha256"] == file_sha256(DATA_PATH)
@@ -196,7 +212,10 @@ def test_shipped_model_matches_the_readme_and_explains_a_real_row():
         feature_columns=list(bundle["feature_columns"]),
         threshold=float(bundle["threshold"]),
         ranges=bundle["ranges"],
+        calibrator=bundle.get("calibrator"),
     )
+    assert "counterfactual" in explained
+    assert explained["counterfactual"]["text"]
     assert explained["decision"] in {"Approve", "Decline"}
     assert "fully paid" in explained["narrative"]
     assert "pushed" in explained["narrative"]

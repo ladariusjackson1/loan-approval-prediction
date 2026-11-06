@@ -9,6 +9,7 @@ import pytest
 from loan_approval.inspection import coefficient_frame, permutation_frame, pretty_transformed_name
 from loan_approval.plots import (
     contribution_figure,
+    plot_bootstrap_intervals,
     plot_calibration,
     plot_class_balance,
     plot_coefficients,
@@ -25,8 +26,7 @@ def _comparison_rows() -> list[dict[str, object]]:
     rows = []
     for name, default, tuned in (
         ("logistic_regression", 0.70, 0.74),
-        ("random_forest", 0.72, 0.76),
-        ("gradient_boosting", 0.71, 0.75),
+        ("hist_gradient_boosting", 0.72, 0.76),
     ):
         for stage, score in (("default", default), ("tuned", tuned)):
             rows.append(
@@ -35,6 +35,9 @@ def _comparison_rows() -> list[dict[str, object]]:
                     "stage": stage,
                     "cv_roc_auc_mean": score,
                     "cv_roc_auc_std": 0.02,
+                    "holdout_roc_auc": score,
+                    "holdout_roc_auc_ci_low": score - 0.02,
+                    "holdout_roc_auc_ci_high": score + 0.02,
                 }
             )
     return rows
@@ -44,7 +47,19 @@ def test_every_report_figure_writes_a_png(tmp_path):
     y_true = np.array([0, 0, 1, 1, 0, 1, 1, 0])
     proba = np.array([0.2, 0.4, 0.6, 0.8, 0.3, 0.7, 0.9, 0.1])
     plot_class_balance(7, 3, tmp_path / "balance.png")
-    plot_model_comparison(_comparison_rows(), tmp_path / "compare.png", winner="random_forest")
+    plot_model_comparison(
+        _comparison_rows(), tmp_path / "compare.png", winner="hist_gradient_boosting"
+    )
+    plot_bootstrap_intervals(
+        _comparison_rows(), tmp_path / "bootstrap.png", winner="hist_gradient_boosting"
+    )
+    missing_interval = _comparison_rows()
+    for row in missing_interval:
+        row["holdout_roc_auc_ci_low"] = None
+        row["holdout_roc_auc_ci_high"] = None
+    plot_bootstrap_intervals(
+        missing_interval, tmp_path / "bootstrap_open.png", winner="logistic_regression"
+    )
     plot_roc_curves(
         [{"model": "logistic_regression", "y_true": y_true, "proba": proba, "roc_auc": 0.8}],
         tmp_path / "roc.png",
@@ -86,7 +101,13 @@ def test_every_report_figure_writes_a_png(tmp_path):
     plot_fairness(
         pd.DataFrame({"attribute": ["not_tracked"], "group": ["a"]}), tmp_path / "fair_unknown.png"
     )
-    plot_calibration(y_true, proba, tmp_path / "calibration.png")
+    plot_calibration(y_true, proba, tmp_path / "calibration.png", uncalibrated=proba)
+    plot_calibration(
+        np.array([0, 1] * 10),
+        np.full(20, 0.4),
+        tmp_path / "calibration_flat.png",
+        uncalibrated=np.linspace(0.1, 0.9, 20),
+    )
     plot_calibration(
         np.array([1, 1, 1, 0]), np.array([0.2, 0.3, 0.4, 0.5]), tmp_path / "calibration_small.png"
     )

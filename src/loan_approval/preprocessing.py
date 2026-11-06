@@ -14,8 +14,8 @@ def build_preprocessor(columns: list[str]) -> ColumnTransformer:
     """Median-impute and scale numbers; mode-impute and one-hot encode categories.
 
     Scaling sits in the shared pipeline so logistic regularization sees comparable
-    units. Tree splits are invariant to a per-feature affine rescaling, so the
-    forest and the booster are not helped or hurt by that step.
+    units. Tree splits are invariant to a per-feature affine rescaling, so
+    histogram gradient boosting is not helped or hurt by that step.
     """
 
     numeric, categorical = feature_types(columns)
